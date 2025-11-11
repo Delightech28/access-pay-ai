@@ -20,8 +20,8 @@ export const FUJI_CONFIG = {
   blockExplorerUrls: ["https://testnet.snowtrace.io/"],
 };
 
-// Contract address (deploy and update this)
-export const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; // Update after deployment
+// Contract address - Deployed on Avalanche Fuji Testnet
+export const CONTRACT_ADDRESS = "0xec82b07d2acc99c9dd7eb1676420cba5997f7dfa";
 
 // Connect wallet to Avalanche Fuji
 export const connectWallet = async (): Promise<string> => {

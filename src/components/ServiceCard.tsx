@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,17 @@ interface ServiceCardProps {
 const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   const [isPaying, setIsPaying] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
+
+  useEffect(() => {
+    const fetchAccessStatus = async () => {
+      if (walletAddress) {
+        const access = await checkAccess(service.id, walletAddress);
+        setHasAccess(access);
+      }
+    };
+
+    fetchAccessStatus();
+  }, [service.id, walletAddress]);
 
   const handlePayment = async () => {
     setIsPaying(true);

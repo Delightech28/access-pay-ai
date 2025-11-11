@@ -18,16 +18,25 @@ interface ServiceListProps {
 
 const ServiceList = ({ walletAddress, isConnected }: ServiceListProps) => {
   const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load services from contract or mock data
     const loadServices = async () => {
-      const mockServices = getServices();
-      setServices(mockServices);
+      try {
+        setLoading(true);
+        const fetchedServices = await getServices();
+        setServices(fetchedServices);
+      } catch (error) {
+        console.error("Error loading services:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    loadServices();
-  }, []);
+    if (isConnected) {
+      loadServices();
+    }
+  }, [isConnected]);
 
   if (!isConnected) {
     return (
@@ -36,6 +45,27 @@ const ServiceList = ({ walletAddress, isConnected }: ServiceListProps) => {
           <h2 className="text-2xl font-bold mb-4">Connect Your Wallet</h2>
           <p className="text-muted-foreground">
             Connect your wallet to view and access AI services on Avalanche
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <p className="text-muted-foreground">Loading services from contract...</p>
+      </div>
+    );
+  }
+
+  if (services.length === 0) {
+    return (
+      <div className="max-w-4xl mx-auto text-center py-12">
+        <div className="p-8 rounded-lg border border-border bg-card/30 backdrop-blur">
+          <h2 className="text-2xl font-bold mb-4">No Services Available</h2>
+          <p className="text-muted-foreground">
+            No services registered yet. Register services using the smart contract.
           </p>
         </div>
       </div>

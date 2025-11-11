@@ -1,5 +1,6 @@
 // Avalanche blockchain utilities
 // Uses ethers.js for contract interactions on Avalanche C-Chain
+import { ethers } from "ethers";
 
 declare global {
   interface Window {
@@ -66,61 +67,60 @@ export const disconnectWallet = () => {
   console.log("Wallet disconnected");
 };
 
-// Get mock services (will be replaced with contract calls)
-export const getServices = () => {
-  return [
-    {
-      id: 1,
-      name: "GPT-4 API Access",
-      description: "Premium language model with advanced reasoning capabilities",
-      price: "0.01",
-      provider: "OpenAI",
-      category: "LLM",
-    },
-    {
-      id: 2,
-      name: "DALL-E Image Generation",
-      description: "High-quality AI image generation from text prompts",
-      price: "0.005",
-      provider: "OpenAI",
-      category: "Image",
-    },
-    {
-      id: 3,
-      name: "Claude AI Chat",
-      description: "Anthropic's advanced conversational AI assistant",
-      price: "0.008",
-      provider: "Anthropic",
-      category: "LLM",
-    },
-    {
-      id: 4,
-      name: "Whisper Transcription",
-      description: "High-accuracy speech-to-text transcription service",
-      price: "0.003",
-      provider: "OpenAI",
-      category: "Audio",
-    },
-    {
-      id: 5,
-      name: "Stable Diffusion XL",
-      description: "Open-source image generation with fine-tuned models",
-      price: "0.004",
-      provider: "Stability AI",
-      category: "Image",
-    },
-    {
-      id: 6,
-      name: "Code Interpreter",
-      description: "AI-powered code execution and analysis environment",
-      price: "0.012",
-      provider: "Custom",
-      category: "Code",
-    },
-  ];
+// Service metadata (off-chain data for descriptions and categories)
+const SERVICE_METADATA: Record<number, { description: string; category: string }> = {
+  0: {
+    description: "Premium language model with advanced reasoning capabilities",
+    category: "LLM",
+  },
+  1: {
+    description: "High-quality AI image generation from text prompts",
+    category: "Image",
+  },
+  2: {
+    description: "Advanced conversational AI assistant",
+    category: "LLM",
+  },
 };
 
-// Pay for service (mock implementation - will integrate with contract)
+// Get services from smart contract
+export const getServices = async () => {
+  if (!window.ethereum) {
+    throw new Error("Wallet not connected");
+  }
+
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+    
+    const serviceCount = await contract.serviceCount();
+    const services = [];
+
+    for (let i = 0; i < serviceCount; i++) {
+      const service = await contract.getService(i);
+      const metadata = SERVICE_METADATA[i] || {
+        description: "AI service access",
+        category: "AI",
+      };
+
+      services.push({
+        id: Number(service.id),
+        name: service.name,
+        description: metadata.description,
+        price: ethers.formatEther(service.price),
+        provider: service.provider,
+        category: metadata.category,
+      });
+    }
+
+    return services;
+  } catch (error: any) {
+    console.error("Error fetching services:", error);
+    throw new Error("Failed to fetch services from contract");
+  }
+};
+
+// Pay for service using smart contract
 export const payForService = async (
   serviceId: number,
   price: string,
@@ -130,27 +130,27 @@ export const payForService = async (
     throw new Error("Wallet not connected");
   }
 
-  // Simulate payment transaction
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      // Mock transaction
-      console.log(`Payment of ${price} AVAX for service ${serviceId} from ${walletAddress}`);
-      
-      // In production, this would:
-      // 1. Create contract instance with ethers.js
-      // 2. Call contract.payForService(serviceId) with value
-      // 3. Wait for transaction confirmation
-      // 4. Emit AccessGranted event
-      
-      const success = Math.random() > 0.1; // 90% success rate for demo
-      
-      if (success) {
-        resolve();
-      } else {
-        reject(new Error("Transaction failed"));
-      }
-    }, 2000);
-  });
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
+
+    // Convert price to wei
+    const priceInWei = ethers.parseEther(price);
+
+    // Call payForService with the exact price
+    const tx = await contract.payForService(serviceId, {
+      value: priceInWei,
+    });
+
+    // Wait for transaction confirmation
+    await tx.wait();
+    
+    console.log(`Payment successful for service ${serviceId}`);
+  } catch (error: any) {
+    console.error("Payment error:", error);
+    throw new Error(error.message || "Transaction failed");
+  }
 };
 
 // Check if user has access to service
@@ -158,16 +158,34 @@ export const checkAccess = async (
   serviceId: number,
   walletAddress: string
 ): Promise<boolean> => {
-  // In production, this would call contract.hasAccess(walletAddress, serviceId)
-  return false;
+  if (!window.ethereum || !walletAddress) {
+    return false;
+  }
+
+  try {
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+    
+    const hasAccess = await contract.hasAccess(walletAddress, serviceId);
+    return hasAccess;
+  } catch (error: any) {
+    console.error("Error checking access:", error);
+    return false;
+  }
 };
 
-// Get contract ABI (simplified - full ABI would be imported from compiled contract)
+// Contract ABI from AIServiceAccess.sol
 export const CONTRACT_ABI = [
-  "function registerService(string memory name, uint256 price) external",
+  "function registerService(string memory name, uint256 price, address provider) external",
   "function payForService(uint256 serviceId) external payable",
   "function hasAccess(address user, uint256 serviceId) external view returns (bool)",
+  "function getService(uint256 serviceId) external view returns (uint256 id, string name, uint256 price, address provider, bool active)",
+  "function serviceCount() external view returns (uint256)",
   "function withdraw() external",
-  "event ServiceRegistered(uint256 indexed serviceId, string name, uint256 price)",
+  "function deactivateService(uint256 serviceId) external",
+  "function transferOwnership(address newOwner) external",
+  "event ServiceRegistered(uint256 indexed serviceId, string name, uint256 price, address provider)",
   "event AccessGranted(address indexed user, uint256 indexed serviceId, uint256 amount)",
+  "event ServiceDeactivated(uint256 indexed serviceId)",
+  "event FundsWithdrawn(address indexed owner, uint256 amount)",
 ];

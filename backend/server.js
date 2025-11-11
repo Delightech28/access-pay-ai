@@ -514,27 +514,93 @@ app.get('/services', async (req, res) => {
   }
 });
 
+/**
+ * AI Chat endpoint - Checks access and returns AI responses
+ * Returns 402 if payment not made, AI response if access granted
+ */
+app.post('/ai/chat', async (req, res) => {
+  try {
+    const { userAddress, serviceId, prompt } = req.body;
+
+    if (!userAddress || !serviceId || !prompt) {
+      return res.status(400).json({
+        error: 'Missing required fields: userAddress, serviceId, and prompt are required'
+      });
+    }
+
+    console.log(`Checking access for user ${userAddress} on service ${serviceId}`);
+
+    // Check if user has paid for this service on-chain
+    const hasAccess = await contract.hasAccess(userAddress, serviceId);
+
+    if (!hasAccess) {
+      // Return 402 Payment Required following x402 protocol
+      const service = await contract.getService(serviceId);
+      const priceInAVAX = ethers.formatEther(service.price);
+
+      return res.status(402).json({
+        error: 'Payment required',
+        message: 'You need to pay for this service to access it',
+        payment: {
+          serviceId: serviceId.toString(),
+          price: priceInAVAX,
+          currency: 'AVAX',
+          contractAddress: CONTRACT_ADDRESS,
+          network: 'Avalanche Fuji Testnet'
+        }
+      });
+    }
+
+    // User has access - Generate AI response
+    console.log(`Access granted for service ${serviceId}. Processing prompt: ${prompt}`);
+    
+    // Mock AI response based on service
+    const aiResponse = generateMockAIResponse(serviceId, prompt);
+
+    res.json(aiResponse);
+
+  } catch (error) {
+    console.error('Error in /ai/chat:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
 // Helper function for mock AI responses
-function generateMockAIResponse(serviceId, userAddress) {
-  const responses = {
+function generateMockAIResponse(serviceId, prompt) {
+  const serviceResponses = {
     0: {
-      model: 'gpt-4',
-      content: 'This is a mock GPT-4 response. In production, this would call the actual OpenAI API.',
-      tokens: 150,
+      model: 'GPT-4',
+      serviceName: 'GPT-4 API Access',
     },
     1: {
-      model: 'dall-e-3',
-      imageUrl: 'https://placeholder.com/generated-image.png',
-      prompt: 'Sample generated image',
+      model: 'Claude-3',
+      serviceName: 'Claude-3 API Access',
     },
     2: {
-      model: 'claude-3',
-      content: 'Mock Claude AI response with advanced reasoning capabilities.',
-      tokens: 200,
+      model: 'Gemini-Pro',
+      serviceName: 'Gemini-Pro API Access',
     },
   };
 
-  return responses[serviceId] || { message: 'AI response generated successfully' };
+  const serviceInfo = serviceResponses[serviceId] || {
+    model: 'AI Service',
+    serviceName: 'AI Service Access',
+  };
+
+  return {
+    model: serviceInfo.model,
+    response: `[${serviceInfo.model} Mock Response]\n\nYou asked: "${prompt}"\n\nThis is a simulated AI response. ${serviceInfo.model} would process your request here. In production, this endpoint would:\n\n1. Verify your payment on-chain ✓\n2. Forward your prompt to the real ${serviceInfo.model} API\n3. Stream back the actual AI response\n4. Track usage and billing\n\nFor now, this demonstrates the x402 payment protocol working correctly!`,
+    serviceId: serviceId.toString(),
+    timestamp: new Date().toISOString(),
+    usage: {
+      promptTokens: prompt.split(' ').length * 1.3,
+      completionTokens: 85,
+      totalTokens: prompt.split(' ').length * 1.3 + 85,
+    }
+  };
 }
 
 // Start server

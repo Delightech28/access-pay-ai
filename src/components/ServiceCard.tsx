@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Loader2, Zap } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CheckCircle2, Loader2, Zap, Send, MessageSquare, X } from "lucide-react";
 import { toast } from "sonner";
 import { payForService, checkAccess } from "@/lib/avalanche";
 
@@ -20,9 +22,19 @@ interface ServiceCardProps {
   walletAddress: string;
 }
 
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
 const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   const [isPaying, setIsPaying] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [prompt, setPrompt] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const fetchAccessStatus = async () => {
@@ -36,19 +48,84 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   }, [service.id, walletAddress]);
 
   const handlePayment = async () => {
-    setIsPaying(true);
+    if (!walletAddress) {
+      toast.error("Wallet Not Connected", {
+        description: "Please connect your wallet first",
+      });
+      return;
+    }
+
     try {
+      setIsPaying(true);
       await payForService(service.id, service.price, walletAddress);
+      
       setHasAccess(true);
-      toast.success("Payment successful!", {
+      toast.success("Payment Successful! ✨", {
         description: `You now have access to ${service.name}`,
       });
     } catch (error: any) {
-      toast.error("Payment failed", {
-        description: error.message || "Please try again",
+      console.error("Payment error:", error);
+      toast.error("Payment Failed", {
+        description: error.message || "Failed to process payment",
       });
     } finally {
       setIsPaying(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!prompt.trim() || !walletAddress) return;
+
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: prompt,
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setPrompt("");
+    setIsLoading(true);
+
+    try {
+      const response = await fetch("http://localhost:3001/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userAddress: walletAddress,
+          serviceId: service.id,
+          prompt: userMessage.content,
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 402) {
+          const errorData = await response.json();
+          toast.error("Payment Required", {
+            description: errorData.message,
+          });
+          setHasAccess(false);
+          return;
+        }
+        throw new Error("Failed to get AI response");
+      }
+
+      const data = await response.json();
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: data.response,
+        timestamp: data.timestamp,
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error: any) {
+      console.error("Chat error:", error);
+      toast.error("Error", {
+        description: error.message || "Failed to send message",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -97,16 +174,100 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
         </div>
 
         {/* Action Button */}
-        <div className="mt-auto">
+        <div className="mt-auto space-y-3">
           {hasAccess ? (
-            <Button
-              disabled
-              variant="outline"
-              className="w-full gap-2 border-accent/50 text-accent bg-accent/5 cursor-not-allowed"
-            >
-              <CheckCircle2 className="w-5 h-5" />
-              <span className="font-medium">Access Granted ✅</span>
-            </Button>
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-accent">
+                  <CheckCircle2 className="w-5 h-5" />
+                  <span className="font-medium">Access Granted</span>
+                </div>
+                <Button
+                  onClick={() => setShowChat(!showChat)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  {showChat ? (
+                    <>
+                      <X className="w-4 h-4" />
+                      Close
+                    </>
+                  ) : (
+                    <>
+                      <MessageSquare className="w-4 h-4" />
+                      Chat
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Chat Interface */}
+              {showChat && (
+                <div className="w-full space-y-3 pt-3 border-t border-border/50">
+                  <ScrollArea className="h-64 w-full rounded-lg border border-border bg-background/50 p-3">
+                    {messages.length === 0 ? (
+                      <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                        <div className="text-center">
+                          <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          <p>Start chatting with {service.name}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {messages.map((msg, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                          >
+                            <div
+                              className={`max-w-[85%] rounded-lg px-3 py-2 ${
+                                msg.role === "user"
+                                  ? "bg-primary text-primary-foreground"
+                                  : "bg-muted text-foreground border border-border"
+                              }`}
+                            >
+                              <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                            </div>
+                          </div>
+                        ))}
+                        {isLoading && (
+                          <div className="flex justify-start">
+                            <div className="bg-muted border border-border rounded-lg px-3 py-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Type your message..."
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSendMessage();
+                        }
+                      }}
+                      disabled={isLoading}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!prompt.trim() || isLoading}
+                      size="icon"
+                      className="shrink-0"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <Button
               onClick={handlePayment}

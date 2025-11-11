@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Zap, Home, Grid3x3, User, Info } from "lucide-react";
+import { Menu, X, Zap, Home, Grid3x3, User, Info, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ const Navbar = () => {
   const navItems = [
     { name: "Home", path: "/", icon: Home },
     { name: "Services", path: "/services", icon: Grid3x3 },
+    { name: "Leaderboard", path: "/leaderboard", icon: Trophy },
     { name: "Profile", path: "/profile", icon: User },
     { name: "About", path: "/about", icon: Info },
   ];

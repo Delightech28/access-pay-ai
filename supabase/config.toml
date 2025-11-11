@@ -1,1 +1,10 @@
 project_id = "habawndmitwvdgesjbrt"
+
+[functions.track-access]
+verify_jwt = false
+
+[functions.check-access]
+verify_jwt = false
+
+[functions.get-leaderboard]
+verify_jwt = false

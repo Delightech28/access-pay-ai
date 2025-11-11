@@ -41,6 +41,7 @@ const ServiceList = ({ walletAddress, isConnected }: ServiceListProps) => {
         setLoading(true);
         try {
           const fetchedServices = await getServices();
+          console.log("Fetched services:", fetchedServices);
           setServices(fetchedServices);
           setFilteredServices(fetchedServices);
           
@@ -51,6 +52,8 @@ const ServiceList = ({ walletAddress, isConnected }: ServiceListProps) => {
           setAllCategories(categories);
         } catch (error) {
           console.error("Failed to fetch services:", error);
+          // Show user-friendly error
+          alert("Failed to load services from blockchain. Please ensure your wallet is connected to Avalanche Fuji Testnet.");
         } finally {
           setLoading(false);
         }

@@ -78,22 +78,32 @@ export const getServices = async () => {
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     
     const serviceCount = await contract.serviceCount();
+    console.log(`Total services on blockchain: ${serviceCount}`);
     const services = [];
 
     for (let i = 0; i < serviceCount; i++) {
       const service = await contract.getService(i);
-
-      services.push({
-        id: Number(service.id),
+      console.log(`Service ${i}:`, {
         name: service.name,
-        category: service.category,
-        description: service.description,
-        price: ethers.formatEther(service.price),
-        provider: service.provider,
         active: service.active,
+        price: ethers.formatEther(service.price)
       });
+
+      // Only include active services
+      if (service.active) {
+        services.push({
+          id: Number(service.id),
+          name: service.name,
+          category: service.category,
+          description: service.description,
+          price: ethers.formatEther(service.price),
+          provider: service.provider,
+          active: service.active,
+        });
+      }
     }
 
+    console.log(`Active services found: ${services.length}`);
     return services;
   } catch (error: any) {
     console.error("Error fetching services:", error);

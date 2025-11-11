@@ -17,7 +17,7 @@ const FUJI_RPC = 'https://api.avax-test.network/ext/bc/C/rpc';
 const provider = new ethers.JsonRpcProvider(FUJI_RPC);
 
 // Contract configuration
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0xec82b07d2acc99c9dd7eb1676420cba5997f7dfa';
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x8b145549ae006dd1e8440cf50f8ee77ed6f94bd7';
 const CONTRACT_ABI = [
   {
     "inputs": [],
@@ -50,6 +50,19 @@ const CONTRACT_ABI = [
     "type": "event"
   },
   {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_serviceId",
+        "type": "uint256"
+      }
+    ],
+    "name": "deactivateService",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "anonymous": false,
     "inputs": [
       {
@@ -67,6 +80,52 @@ const CONTRACT_ABI = [
     ],
     "name": "FundsWithdrawn",
     "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_serviceId",
+        "type": "uint256"
+      }
+    ],
+    "name": "payForService",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "_name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_category",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_price",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_provider",
+        "type": "address"
+      }
+    ],
+    "name": "registerService",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
     "anonymous": false,
@@ -98,6 +157,18 @@ const CONTRACT_ABI = [
       },
       {
         "indexed": false,
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "indexed": false,
         "internalType": "uint256",
         "name": "price",
         "type": "uint256"
@@ -111,6 +182,26 @@ const CONTRACT_ABI = [
     ],
     "name": "ServiceRegistered",
     "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "withdraw",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
   },
   {
     "inputs": [
@@ -134,19 +225,6 @@ const CONTRACT_ABI = [
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_serviceId",
-        "type": "uint256"
-      }
-    ],
-    "name": "deactivateService",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -180,6 +258,16 @@ const CONTRACT_ABI = [
       {
         "internalType": "string",
         "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
         "type": "string"
       },
       {
@@ -239,42 +327,6 @@ const CONTRACT_ABI = [
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_serviceId",
-        "type": "uint256"
-      }
-    ],
-    "name": "payForService",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_price",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "_provider",
-        "type": "address"
-      }
-    ],
-    "name": "registerService",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "serviceCount",
     "outputs": [
@@ -308,6 +360,16 @@ const CONTRACT_ABI = [
         "type": "string"
       },
       {
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
         "internalType": "uint256",
         "name": "price",
         "type": "uint256"
@@ -324,26 +386,6 @@ const CONTRACT_ABI = [
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_newOwner",
-        "type": "address"
-      }
-    ],
-    "name": "transferOwnership",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "withdraw",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   }
 ];

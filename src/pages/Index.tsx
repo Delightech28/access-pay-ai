@@ -21,11 +21,11 @@ const Index = () => {
               <div className="absolute inset-0 blur-2xl bg-primary/30 animate-pulse" />
             </div>
             <h1 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-in fade-in slide-in-from-bottom-3 duration-700">
-              AI Access Protocol
+              NeuraPay
             </h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-            Pay-per-access AI services on Avalanche using x402 payment standard
+            Neural Payment Protocol - Seamless AI service payments on Avalanche
           </p>
         </header>
 

@@ -1,4 +1,4 @@
-# AI Access Protocol - Avalanche x402 Payment System
+# NeuraPay - Neural Payment Protocol
 
 A full-stack Web3 application implementing the x402 payment standard for pay-per-access AI services on Avalanche blockchain.
 
@@ -46,7 +46,7 @@ This project demonstrates how AI services can use blockchain-based micropayments
 
 ```bash
 git clone <your-repo-url>
-cd ai-access-protocol
+cd neurapay
 
 # Install frontend dependencies
 npm install

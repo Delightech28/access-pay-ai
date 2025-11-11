@@ -9,10 +9,10 @@ import { payForService, checkAccess } from "@/lib/avalanche";
 interface Service {
   id: number;
   name: string;
+  category: string;
   description: string;
   price: string;
   provider: string;
-  category: string;
 }
 
 interface ServiceCardProps {
@@ -53,56 +53,75 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   };
 
   return (
-    <Card className="p-6 gradient-card border-border hover:border-primary/50 transition-all duration-300 hover:glow-primary">
-      <div className="flex flex-col h-full">
-        {/* Header */}
+    <Card className="group relative p-6 gradient-card border-border hover:border-primary/50 transition-all duration-300 hover:glow-primary overflow-hidden">
+      {/* Animated background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      
+      <div className="relative flex flex-col h-full">
+        {/* Header with Category Badge */}
         <div className="mb-4">
-          <div className="flex items-start justify-between mb-2">
-            <h3 className="text-xl font-bold text-foreground">{service.name}</h3>
-            <Badge variant="secondary" className="ml-2">
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+              {service.name}
+            </h3>
+            <Badge 
+              variant="secondary" 
+              className="bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors"
+            >
               {service.category}
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mb-3">{service.description}</p>
-          <p className="text-xs text-muted-foreground">
-            Provider: <span className="font-mono">{service.provider}</span>
+          
+          {/* Description */}
+          <p className="text-sm text-muted-foreground leading-relaxed mb-3 min-h-[40px]">
+            {service.description}
           </p>
-        </div>
-
-        {/* Price */}
-        <div className="mb-4">
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-primary">{service.price}</span>
-            <span className="text-sm text-muted-foreground">AVAX</span>
+          
+          {/* Provider */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Provider:</span>
+            <span className="font-mono text-foreground/80 truncate">
+              {service.provider.slice(0, 6)}...{service.provider.slice(-4)}
+            </span>
           </div>
         </div>
 
-        {/* Action */}
+        {/* Price Display */}
+        <div className="mb-6 p-4 rounded-lg bg-secondary/30 border border-border">
+          <div className="flex items-baseline justify-center gap-2">
+            <span className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              {service.price}
+            </span>
+            <span className="text-sm text-muted-foreground font-medium">AVAX</span>
+          </div>
+        </div>
+
+        {/* Action Button */}
         <div className="mt-auto">
           {hasAccess ? (
             <Button
               disabled
               variant="outline"
-              className="w-full gap-2 border-accent text-accent"
+              className="w-full gap-2 border-accent/50 text-accent bg-accent/5 cursor-not-allowed"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              Access Granted
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="font-medium">Access Granted ✅</span>
             </Button>
           ) : (
             <Button
               onClick={handlePayment}
               disabled={isPaying}
-              className="w-full gap-2 hover:scale-105 transition-transform"
+              className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-primary/50"
             >
               {isPaying ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing...
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span className="font-medium">Processing...</span>
                 </>
               ) : (
                 <>
-                  <Zap className="w-4 h-4" />
-                  Pay & Access
+                  <Zap className="w-5 h-5" />
+                  <span className="font-medium">Pay & Access</span>
                 </>
               )}
             </Button>

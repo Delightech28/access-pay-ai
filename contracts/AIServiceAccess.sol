@@ -12,6 +12,8 @@ contract AIServiceAccess {
     struct Service {
         uint256 id;
         string name;
+        string category;
+        string description;
         uint256 price; // Price in wei (AVAX)
         address provider;
         bool active;
@@ -30,6 +32,8 @@ contract AIServiceAccess {
     event ServiceRegistered(
         uint256 indexed serviceId,
         string name,
+        string category,
+        string description,
         uint256 price,
         address provider
     );
@@ -63,26 +67,34 @@ contract AIServiceAccess {
     /**
      * @dev Register a new AI service
      * @param _name Name of the service
+     * @param _category Category of the service
+     * @param _description Description of the service
      * @param _price Price in wei (AVAX)
      * @param _provider Address of the service provider
      */
     function registerService(
         string memory _name,
+        string memory _category,
+        string memory _description,
         uint256 _price,
         address _provider
     ) external onlyOwner {
         require(_price > 0, "Price must be greater than 0");
         require(_provider != address(0), "Invalid provider address");
+        require(bytes(_name).length > 0, "Name cannot be empty");
+        require(bytes(_category).length > 0, "Category cannot be empty");
         
         services[serviceCount] = Service({
             id: serviceCount,
             name: _name,
+            category: _category,
+            description: _description,
             price: _price,
             provider: _provider,
             active: true
         });
         
-        emit ServiceRegistered(serviceCount, _name, _price, _provider);
+        emit ServiceRegistered(serviceCount, _name, _category, _description, _price, _provider);
         serviceCount++;
     }
     
@@ -149,6 +161,8 @@ contract AIServiceAccess {
         returns (
             uint256 id,
             string memory name,
+            string memory category,
+            string memory description,
             uint256 price,
             address provider,
             bool active
@@ -158,6 +172,8 @@ contract AIServiceAccess {
         return (
             service.id,
             service.name,
+            service.category,
+            service.description,
             service.price,
             service.provider,
             service.active

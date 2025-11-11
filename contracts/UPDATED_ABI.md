@@ -1,161 +1,11 @@
-// Avalanche blockchain utilities
-// Uses ethers.js for contract interactions on Avalanche C-Chain
-import { ethers } from "ethers";
+# Updated Contract ABI - AIServiceAccess v2
 
-declare global {
-  interface Window {
-    ethereum?: any;
-  }
-}
+After deploying the updated smart contract with category and description fields, use this ABI:
 
-// Avalanche Fuji Testnet configuration
-export const FUJI_CONFIG = {
-  chainId: "0xA869", // 43113 in hex
-  chainName: "Avalanche Fuji Testnet",
-  nativeCurrency: {
-    name: "AVAX",
-    symbol: "AVAX",
-    decimals: 18,
-  },
-  rpcUrls: ["https://api.avax-test.network/ext/bc/C/rpc"],
-  blockExplorerUrls: ["https://testnet.snowtrace.io/"],
-};
+## New Contract ABI
 
-// Contract address - Deployed on Avalanche Fuji Testnet
-export const CONTRACT_ADDRESS = "0xec82b07d2acc99c9dd7eb1676420cba5997f7dfa";
-
-// Connect wallet to Avalanche Fuji
-export const connectWallet = async (): Promise<string> => {
-  if (!window.ethereum) {
-    throw new Error("Please install MetaMask or Core Wallet");
-  }
-
-  try {
-    // Request account access
-    const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts",
-    });
-
-    // Switch to Avalanche Fuji network
-    try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: FUJI_CONFIG.chainId }],
-      });
-    } catch (switchError: any) {
-      // Chain not added, add it
-      if (switchError.code === 4902) {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [FUJI_CONFIG],
-        });
-      } else {
-        throw switchError;
-      }
-    }
-
-    return accounts[0];
-  } catch (error: any) {
-    throw new Error(error.message || "Failed to connect wallet");
-  }
-};
-
-// Disconnect wallet
-export const disconnectWallet = () => {
-  // Note: MetaMask doesn't have a programmatic disconnect
-  // This just clears local state
-  console.log("Wallet disconnected");
-};
-
-// Get services from smart contract
-export const getServices = async () => {
-  if (!window.ethereum) {
-    throw new Error("Wallet not connected");
-  }
-
-  try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-    
-    const serviceCount = await contract.serviceCount();
-    const services = [];
-
-    for (let i = 0; i < serviceCount; i++) {
-      const service = await contract.getService(i);
-
-      services.push({
-        id: Number(service.id),
-        name: service.name,
-        category: service.category,
-        description: service.description,
-        price: ethers.formatEther(service.price),
-        provider: service.provider,
-      });
-    }
-
-    return services;
-  } catch (error: any) {
-    console.error("Error fetching services:", error);
-    throw new Error("Failed to fetch services from contract");
-  }
-};
-
-// Pay for service using smart contract
-export const payForService = async (
-  serviceId: number,
-  price: string,
-  walletAddress: string
-): Promise<void> => {
-  if (!window.ethereum) {
-    throw new Error("Wallet not connected");
-  }
-
-  try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const signer = await provider.getSigner();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
-
-    // Convert price to wei
-    const priceInWei = ethers.parseEther(price);
-
-    // Call payForService with the exact price
-    const tx = await contract.payForService(serviceId, {
-      value: priceInWei,
-    });
-
-    // Wait for transaction confirmation
-    await tx.wait();
-    
-    console.log(`Payment successful for service ${serviceId}`);
-  } catch (error: any) {
-    console.error("Payment error:", error);
-    throw new Error(error.message || "Transaction failed");
-  }
-};
-
-// Check if user has access to service
-export const checkAccess = async (
-  serviceId: number,
-  walletAddress: string
-): Promise<boolean> => {
-  if (!window.ethereum || !walletAddress) {
-    return false;
-  }
-
-  try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-    
-    const hasAccess = await contract.hasAccess(walletAddress, serviceId);
-    return hasAccess;
-  } catch (error: any) {
-    console.error("Error checking access:", error);
-    return false;
-  }
-};
-
-// Contract ABI from deployed contract
-export const CONTRACT_ABI = [
+```json
+[
   {
     "inputs": [],
     "stateMutability": "nonpayable",
@@ -231,6 +81,18 @@ export const CONTRACT_ABI = [
         "indexed": false,
         "internalType": "string",
         "name": "name",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "description",
         "type": "string"
       },
       {
@@ -320,6 +182,16 @@ export const CONTRACT_ABI = [
         "type": "string"
       },
       {
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
         "internalType": "uint256",
         "name": "price",
         "type": "uint256"
@@ -396,6 +268,16 @@ export const CONTRACT_ABI = [
         "type": "string"
       },
       {
+        "internalType": "string",
+        "name": "_category",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "_description",
+        "type": "string"
+      },
+      {
         "internalType": "uint256",
         "name": "_price",
         "type": "uint256"
@@ -445,6 +327,16 @@ export const CONTRACT_ABI = [
         "type": "string"
       },
       {
+        "internalType": "string",
+        "name": "category",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
         "internalType": "uint256",
         "name": "price",
         "type": "uint256"
@@ -483,4 +375,66 @@ export const CONTRACT_ABI = [
     "stateMutability": "nonpayable",
     "type": "function"
   }
-];
+]
+```
+
+## Register Services with New Parameters
+
+When registering services using Remix, now include category and description:
+
+### Example: Register GPT-4 Service
+
+```solidity
+registerService(
+  "GPT-4 API Access",                                    // name
+  "LLM",                                                 // category
+  "Premium language model with advanced reasoning",      // description
+  10000000000000000,                                     // price (0.01 AVAX in wei)
+  "0xYourProviderAddressHere"                           // provider
+)
+```
+
+### Example: Register DALL-E Service
+
+```solidity
+registerService(
+  "DALL-E 3 Image Generation",
+  "Image",
+  "High-quality AI image generation from text prompts",
+  50000000000000000,  // 0.05 AVAX
+  "0xYourProviderAddressHere"
+)
+```
+
+### Example: Register Claude Service
+
+```solidity
+registerService(
+  "Claude AI Assistant",
+  "LLM",
+  "Advanced conversational AI with extended context",
+  20000000000000000,  // 0.02 AVAX
+  "0xYourProviderAddressHere"
+)
+```
+
+## Update Frontend and Backend
+
+After deploying the new contract:
+
+1. Update the contract address in:
+   - `src/lib/avalanche.ts` (line 25)
+   - `backend/server.js` (line 20)
+   - `.env.example`
+   - `backend/.env.example`
+
+2. The ABI is already updated in:
+   - `src/lib/avalanche.ts`
+   - `backend/server.js`
+
+3. Test the integration:
+   - Connect wallet
+   - View services (should show category and description)
+   - Pay for a service
+   - Verify access is granted
+   - Refresh page and confirm access persists

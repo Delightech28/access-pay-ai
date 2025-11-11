@@ -57,6 +57,10 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        avalanche: {
+          red: "hsl(0 75% 58%)",
+          cyan: "hsl(193 95% 50%)",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

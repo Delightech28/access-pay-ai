@@ -14,13 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      access_records: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          service_id: number
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          service_id: number
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          service_id?: number
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      leaderboard_stats: {
+        Row: {
+          created_at: string | null
+          last_payment_at: string | null
+          services_used: number | null
+          total_spent: number | null
+          updated_at: string | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          last_payment_at?: string | null
+          services_used?: number | null
+          total_spent?: number | null
+          updated_at?: string | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          last_payment_at?: string | null
+          services_used?: number | null
+          total_spent?: number | null
+          updated_at?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      cleanup_expired_access: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

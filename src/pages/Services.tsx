@@ -1,12 +1,11 @@
-import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import WalletConnect from "@/components/WalletConnect";
 import ServiceList from "@/components/ServiceList";
 import { Wallet } from "lucide-react";
+import { useWallet } from "@/contexts/WalletContext";
 
 const Services = () => {
-  const [walletAddress, setWalletAddress] = useState<string>("");
-  const [isConnected, setIsConnected] = useState(false);
+  const { walletAddress, isConnected } = useWallet();
 
   return (
     <div className="min-h-screen">
@@ -25,18 +24,7 @@ const Services = () => {
 
         {/* Wallet Connection */}
         <div className="flex justify-center mb-8">
-          <WalletConnect
-            walletAddress={walletAddress}
-            isConnected={isConnected}
-            onConnect={(address) => {
-              setWalletAddress(address);
-              setIsConnected(true);
-            }}
-            onDisconnect={() => {
-              setWalletAddress("");
-              setIsConnected(false);
-            }}
-          />
+          <WalletConnect />
         </div>
 
         {/* Connection Status */}

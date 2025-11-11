@@ -1,51 +1,14 @@
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Wallet, LogOut } from "lucide-react";
-import { toast } from "sonner";
-import { connectWallet, disconnectWallet } from "@/lib/avalanche";
+import { useWallet } from "@/contexts/WalletContext";
 
-interface WalletConnectProps {
-  walletAddress: string;
-  isConnected: boolean;
-  onConnect: (address: string) => void;
-  onDisconnect: () => void;
-}
-
-const WalletConnect = ({
-  walletAddress,
-  isConnected,
-  onConnect,
-  onDisconnect,
-}: WalletConnectProps) => {
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  const handleConnect = async () => {
-    setIsConnecting(true);
-    try {
-      const address = await connectWallet();
-      onConnect(address);
-      toast.success("Wallet connected successfully!", {
-        description: `Address: ${address.slice(0, 6)}...${address.slice(-4)}`,
-      });
-    } catch (error: any) {
-      toast.error("Failed to connect wallet", {
-        description: error.message || "Please install MetaMask or Core Wallet",
-      });
-    } finally {
-      setIsConnecting(false);
-    }
-  };
-
-  const handleDisconnect = () => {
-    disconnectWallet();
-    onDisconnect();
-    toast.info("Wallet disconnected");
-  };
+const WalletConnect = () => {
+  const { walletAddress, isConnected, isConnecting, connectWallet, disconnectWallet } = useWallet();
 
   if (isConnected) {
     return (
       <Button
-        onClick={handleDisconnect}
+        onClick={disconnectWallet}
         variant="outline"
         className="gap-2"
       >
@@ -60,7 +23,7 @@ const WalletConnect = ({
 
   return (
     <Button
-      onClick={handleConnect}
+      onClick={connectWallet}
       disabled={isConnecting}
       className="gap-2 glow-primary hover:scale-105 transition-transform"
     >

@@ -1,13 +1,12 @@
-import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import WalletConnect from "@/components/WalletConnect";
 import { Wallet, History, Shield, Settings } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useWallet } from "@/contexts/WalletContext";
 
 const Profile = () => {
-  const [walletAddress, setWalletAddress] = useState<string>("");
-  const [isConnected, setIsConnected] = useState(false);
+  const { walletAddress, isConnected } = useWallet();
 
   return (
     <div className="min-h-screen">
@@ -33,18 +32,7 @@ const Profile = () => {
               <p className="text-muted-foreground mb-8">
                 Connect your wallet to view your profile and service access history
               </p>
-              <WalletConnect
-                walletAddress={walletAddress}
-                isConnected={isConnected}
-                onConnect={(address) => {
-                  setWalletAddress(address);
-                  setIsConnected(true);
-                }}
-                onDisconnect={() => {
-                  setWalletAddress("");
-                  setIsConnected(false);
-                }}
-              />
+              <WalletConnect />
             </Card>
           </div>
         ) : (
@@ -63,18 +51,7 @@ const Profile = () => {
                     </p>
                   </div>
                 </div>
-                <WalletConnect
-                  walletAddress={walletAddress}
-                  isConnected={isConnected}
-                  onConnect={(address) => {
-                    setWalletAddress(address);
-                    setIsConnected(true);
-                  }}
-                  onDisconnect={() => {
-                    setWalletAddress("");
-                    setIsConnected(false);
-                  }}
-                />
+                <WalletConnect />
               </div>
             </Card>
 

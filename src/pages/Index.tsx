@@ -1,12 +1,11 @@
-import { useState } from "react";
 import Navbar from "@/components/Navbar";
 import WalletConnect from "@/components/WalletConnect";
 import ServiceList from "@/components/ServiceList";
 import { Wallet, Zap } from "lucide-react";
+import { useWallet } from "@/contexts/WalletContext";
 
 const Index = () => {
-  const [walletAddress, setWalletAddress] = useState<string>("");
-  const [isConnected, setIsConnected] = useState(false);
+  const { walletAddress, isConnected } = useWallet();
 
   return (
     <div className="min-h-screen">
@@ -31,18 +30,7 @@ const Index = () => {
 
         {/* Wallet Connection */}
         <div className="flex justify-center mb-12 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-300">
-          <WalletConnect
-            walletAddress={walletAddress}
-            isConnected={isConnected}
-            onConnect={(address) => {
-              setWalletAddress(address);
-              setIsConnected(true);
-            }}
-            onDisconnect={() => {
-              setWalletAddress("");
-              setIsConnected(false);
-            }}
-          />
+          <WalletConnect />
         </div>
 
         {/* Connection Status */}

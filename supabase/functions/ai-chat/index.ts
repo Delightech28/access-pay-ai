@@ -64,11 +64,11 @@ serve(async (req) => {
     // User has valid access, generate AI response
     console.log('User has valid access, generating response for prompt:', prompt);
     
-    const serviceName = serviceId === 0 ? 'GPT-4' : serviceId === 1 ? 'Gemini' : 'AI Service';
+    const serviceName = serviceId === 0 ? 'Gemini' : serviceId === 1 ? 'GPT-4' : 'AI Service';
     let response: string;
 
-    // For Gemini service (serviceId 1), call real Gemini API
-    if (serviceId === 1) {
+    // For Gemini service (serviceId 0), call real Gemini API
+    if (serviceId === 0) {
       const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
       if (!geminiApiKey) {
         console.error('GEMINI_API_KEY not configured');
@@ -134,7 +134,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Service Not Available',
-          message: `${serviceName} is not yet integrated. Please use Gemini AI (Service ID 1) for real AI responses.`
+          message: `${serviceName} is not yet integrated. Please use Gemini AI (Service ID 0) for real AI responses.`
         }),
         { status: 501, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

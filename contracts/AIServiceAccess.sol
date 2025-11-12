@@ -22,11 +22,14 @@ contract AIServiceAccess {
     // Service ID => Service details
     mapping(uint256 => Service) public services;
     
-    // User address => Service ID => Has paid
-    mapping(address => mapping(uint256 => bool)) public accessGranted;
+    // User address => Service ID => Access expiry timestamp
+    mapping(address => mapping(uint256 => uint256)) public accessExpiry;
     
     // Service counter
     uint256 public serviceCount;
+    
+    // Access duration: 1 hour
+    uint256 public constant ACCESS_DURATION = 1 hours;
     
     // Events
     event ServiceRegistered(
@@ -41,7 +44,13 @@ contract AIServiceAccess {
     event AccessGranted(
         address indexed user,
         uint256 indexed serviceId,
-        uint256 amount
+        uint256 amount,
+        uint256 expiresAt
+    );
+    
+    event AccessExpired(
+        address indexed user,
+        uint256 indexed serviceId
     );
     
     event ServiceDeactivated(uint256 indexed serviceId);
@@ -109,10 +118,16 @@ contract AIServiceAccess {
     {
         Service memory service = services[_serviceId];
         require(msg.value >= service.price, "Insufficient payment");
-        require(!accessGranted[msg.sender][_serviceId], "Access already granted");
         
-        // Grant access
-        accessGranted[msg.sender][_serviceId] = true;
+        // Check if access has expired (allow re-payment)
+        require(
+            accessExpiry[msg.sender][_serviceId] <= block.timestamp,
+            "Access still active"
+        );
+        
+        // Grant access with expiry timestamp
+        uint256 expiresAt = block.timestamp + ACCESS_DURATION;
+        accessExpiry[msg.sender][_serviceId] = expiresAt;
         
         // Refund excess payment
         if (msg.value > service.price) {
@@ -120,21 +135,35 @@ contract AIServiceAccess {
             payable(msg.sender).transfer(refund);
         }
         
-        emit AccessGranted(msg.sender, _serviceId, service.price);
+        emit AccessGranted(msg.sender, _serviceId, service.price, expiresAt);
     }
     
     /**
      * @dev Check if user has access to a service
      * @param _user Address of the user
      * @param _serviceId ID of the service
-     * @return bool True if user has access
+     * @return bool True if user has active (non-expired) access
      */
     function hasAccess(address _user, uint256 _serviceId) 
         external 
         view 
         returns (bool) 
     {
-        return accessGranted[_user][_serviceId];
+        return accessExpiry[_user][_serviceId] > block.timestamp;
+    }
+    
+    /**
+     * @dev Get access expiry timestamp for a user and service
+     * @param _user Address of the user
+     * @param _serviceId ID of the service
+     * @return uint256 Expiry timestamp (0 if never paid)
+     */
+    function getAccessExpiry(address _user, uint256 _serviceId) 
+        external 
+        view 
+        returns (uint256) 
+    {
+        return accessExpiry[_user][_serviceId];
     }
     
     /**

@@ -200,6 +200,30 @@ export const checkAccess = async (
   }
 };
 
+// Get access expiry timestamp for a user and service
+export const getAccessExpiry = async (
+  serviceId: number,
+  walletAddress: string
+): Promise<number> => {
+  // Use Core wallet if available, otherwise fall back to MetaMask
+  const ethereumProvider = (window as any).avalanche || window.ethereum;
+  
+  if (!ethereumProvider || !walletAddress) {
+    return 0;
+  }
+
+  try {
+    const provider = new ethers.BrowserProvider(ethereumProvider);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+    
+    const expiryTimestamp = await contract.getAccessExpiry(walletAddress, serviceId);
+    return Number(expiryTimestamp);
+  } catch (error: any) {
+    console.error("Error getting access expiry:", error);
+    return 0;
+  }
+};
+
 // Contract ABI from deployed contract
 export const CONTRACT_ABI = [
   {
@@ -227,9 +251,34 @@ export const CONTRACT_ABI = [
         "internalType": "uint256",
         "name": "amount",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "expiresAt",
+        "type": "uint256"
       }
     ],
     "name": "AccessGranted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "user",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "serviceId",
+        "type": "uint256"
+      }
+    ],
+    "name": "AccessExpired",
     "type": "event"
   },
   {
@@ -387,6 +436,19 @@ export const CONTRACT_ABI = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "ACCESS_DURATION",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -399,12 +461,12 @@ export const CONTRACT_ABI = [
         "type": "uint256"
       }
     ],
-    "name": "accessGranted",
+    "name": "accessExpiry",
     "outputs": [
       {
-        "internalType": "bool",
+        "internalType": "uint256",
         "name": "",
-        "type": "bool"
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -467,6 +529,30 @@ export const CONTRACT_ABI = [
         "internalType": "bool",
         "name": "active",
         "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_serviceId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getAccessExpiry",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

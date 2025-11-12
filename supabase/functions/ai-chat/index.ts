@@ -80,7 +80,7 @@ serve(async (req) => {
 
       try {
         const geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: {
@@ -88,9 +88,8 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               contents: [{
-                parts: [{
-                  text: prompt
-                }]
+                role: 'user',
+                parts: [{ text: prompt }]
               }]
             })
           }

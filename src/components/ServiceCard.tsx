@@ -161,33 +161,46 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
         }
       });
 
-      if (error) {
-        // Handle specific error cases
-        if (error.message?.includes('Payment Required') || error.message?.includes('402')) {
+      // Check for errors in response data (HTTP error responses)
+      if (data?.error) {
+        if (data.error === 'Payment Required') {
           toast.error("Access Required", {
-            description: "You need to pay for access to use this service. Please purchase access first.",
+            description: "You need to pay for access to use this service.",
           });
           setHasAccess(false);
           return;
         }
         
-        if (error.message?.includes('Access Expired') || error.message?.includes('expired')) {
+        if (data.error === 'Access Expired') {
           toast.error("Access Expired", {
-            description: "Your access has expired. Please pay again to continue using this service.",
+            description: "Your access has expired. Please pay again to continue.",
           });
           setHasAccess(false);
           setExpiresAt(null);
           return;
         }
 
-        if (error.message?.includes('Service Not Available') || error.message?.includes('501')) {
+        if (data.error === 'Service Not Available') {
           toast.error("Service Not Available", {
             description: "This AI service is not yet integrated. Please try Gemini AI instead.",
           });
           return;
         }
 
-        throw error;
+        if (data.error === 'AI Service Error') {
+          toast.error("AI Service Error", {
+            description: data.message || "Failed to connect to AI. Please try again.",
+          });
+          return;
+        }
+      }
+
+      // Check for network/connection errors
+      if (error) {
+        toast.error("Connection Error", {
+          description: "Failed to connect to AI service. Please try again.",
+        });
+        return;
       }
 
       const assistantMessage: ChatMessage = {

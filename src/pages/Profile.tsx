@@ -1,12 +1,53 @@
+import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
 import WalletConnect from "@/components/WalletConnect";
-import { Wallet, History, Shield, Settings } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Wallet, History, Clock, CheckCircle, XCircle } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWallet } from "@/contexts/WalletContext";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDistanceToNow } from "date-fns";
+
+interface AccessRecord {
+  id: string;
+  service_id: number;
+  wallet_address: string;
+  expires_at: string;
+  created_at: string;
+}
 
 const Profile = () => {
   const { walletAddress, isConnected } = useWallet();
+  const [accessHistory, setAccessHistory] = useState<AccessRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isConnected && walletAddress) {
+      fetchAccessHistory();
+    }
+  }, [isConnected, walletAddress]);
+
+  const fetchAccessHistory = async () => {
+    if (!walletAddress) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('get-access-history', {
+        body: { walletAddress }
+      });
+      
+      if (error) throw error;
+      
+      setAccessHistory(data.accessHistory || []);
+    } catch (error) {
+      console.error('Error fetching access history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const isAccessActive = (expiresAt: string) => {
+    return new Date(expiresAt) > new Date();
+  };
 
   return (
     <div className="min-h-screen">
@@ -55,44 +96,82 @@ const Profile = () => {
               </div>
             </Card>
 
-            {/* Profile Sections Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Access History */}
-              <Card className="p-6 gradient-card border-border hover:border-primary/50 transition-all hover:glow-primary">
-                <History className="w-12 h-12 text-primary mb-4" />
-                <h3 className="text-xl font-bold mb-2">Access History</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  View all services you've accessed and payment history
-                </p>
-                <Button variant="outline" className="w-full" disabled>
-                  Coming Soon
-                </Button>
-              </Card>
-
-              {/* Security */}
-              <Card className="p-6 gradient-card border-border hover:border-primary/50 transition-all hover:glow-primary">
-                <Shield className="w-12 h-12 text-accent mb-4" />
-                <h3 className="text-xl font-bold mb-2">Security</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Manage your wallet security and permissions
-                </p>
-                <Button variant="outline" className="w-full" disabled>
-                  Coming Soon
-                </Button>
-              </Card>
-
-              {/* Settings */}
-              <Card className="p-6 gradient-card border-border hover:border-primary/50 transition-all hover:glow-primary">
-                <Settings className="w-12 h-12 text-primary mb-4" />
-                <h3 className="text-xl font-bold mb-2">Settings</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Customize your preferences and notifications
-                </p>
-                <Button variant="outline" className="w-full" disabled>
-                  Coming Soon
-                </Button>
-              </Card>
-            </div>
+            {/* Access History Section */}
+            <Card className="gradient-card border-border">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="w-6 h-6 text-primary" />
+                  Access History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex justify-center items-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                  </div>
+                ) : accessHistory.length === 0 ? (
+                  <div className="text-center py-12">
+                    <History className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <p className="text-muted-foreground">No access history yet. Start by purchasing access to AI services!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {accessHistory.map((record) => {
+                      const isActive = isAccessActive(record.expires_at);
+                      
+                      return (
+                        <div 
+                          key={record.id}
+                          className={`p-4 rounded-lg border transition-all ${
+                            isActive 
+                              ? 'border-accent/50 bg-accent/5' 
+                              : 'border-border bg-card/50'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-2">
+                                <h4 className="font-semibold">Service #{record.service_id}</h4>
+                                {isActive ? (
+                                  <span className="flex items-center gap-1 text-xs text-accent">
+                                    <CheckCircle className="w-3 h-3" />
+                                    Active
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <XCircle className="w-3 h-3" />
+                                    Expired
+                                  </span>
+                                )}
+                              </div>
+                              
+                              <div className="space-y-1 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  <span>
+                                    Purchased {formatDistanceToNow(new Date(record.created_at), { addSuffix: true })}
+                                  </span>
+                                </div>
+                                
+                                {isActive ? (
+                                  <div className="text-accent">
+                                    Expires {formatDistanceToNow(new Date(record.expires_at), { addSuffix: true })}
+                                  </div>
+                                ) : (
+                                  <div>
+                                    Expired {formatDistanceToNow(new Date(record.expires_at), { addSuffix: true })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>

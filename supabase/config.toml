@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.get-leaderboard]
 verify_jwt = false
+
+[functions.get-access-history]
+verify_jwt = false

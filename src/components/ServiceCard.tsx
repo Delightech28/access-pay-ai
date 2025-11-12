@@ -153,31 +153,16 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3001/ai/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: {
           userAddress: walletAddress,
           serviceId: service.id,
           prompt: userMessage.content,
-        }),
+        }
       });
 
-      if (!response.ok) {
-        if (response.status === 402) {
-          const errorData = await response.json();
-          toast.error("Payment Required", {
-            description: errorData.message,
-          });
-          setHasAccess(false);
-          return;
-        }
-        throw new Error("Failed to get AI response");
-      }
+      if (error) throw error;
 
-      const data = await response.json();
       const assistantMessage: ChatMessage = {
         role: "assistant",
         content: data.response,

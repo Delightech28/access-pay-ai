@@ -39,7 +39,7 @@ const About = () => {
             <div className="absolute inset-0 blur-2xl bg-primary/30 animate-pulse" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-            AI Access Protocol
+            NeuraPay
           </h1>
           <p className="text-xl text-muted-foreground leading-relaxed">
             A decentralized marketplace for AI services powered by the x402 payment standard 

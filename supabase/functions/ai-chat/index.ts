@@ -64,9 +64,75 @@ serve(async (req) => {
     // User has valid access, generate AI response
     console.log('User has valid access, generating response for prompt:', prompt);
     
-    // Generate mock AI response based on service
     const serviceName = serviceId === 0 ? 'GPT-4' : 'Gemini';
-    const response = generateMockAIResponse(prompt, serviceName);
+    let response: string;
+
+    // For Gemini service (serviceId 1), call real Gemini API
+    if (serviceId === 1) {
+      const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+      if (!geminiApiKey) {
+        console.error('GEMINI_API_KEY not configured');
+        return new Response(
+          JSON.stringify({ error: 'Gemini API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        const geminiResponse = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              contents: [{
+                parts: [{
+                  text: prompt
+                }]
+              }]
+            })
+          }
+        );
+
+        if (!geminiResponse.ok) {
+          const errorData = await geminiResponse.text();
+          console.error('Gemini API error:', geminiResponse.status, errorData);
+          throw new Error(`Gemini API returned ${geminiResponse.status}`);
+        }
+
+        const geminiData = await geminiResponse.json();
+        response = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 
+                   'Sorry, I could not generate a response.';
+
+        // Log usage for tracking/leaderboard
+        console.log('Gemini API call successful for user:', userAddress);
+        
+        // Update usage stats in leaderboard_stats table
+        const { error: updateError } = await supabase.rpc('increment_service_usage', {
+          p_wallet_address: userAddress.toLowerCase(),
+          p_service_id: serviceId
+        });
+        
+        if (updateError) {
+          console.error('Failed to update usage stats:', updateError);
+        }
+
+      } catch (error) {
+        console.error('Error calling Gemini API:', error);
+        return new Response(
+          JSON.stringify({ 
+            error: 'AI Service Error',
+            message: 'Failed to get response from Gemini. Please try again.'
+          }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      // For other services, use mock responses
+      response = generateMockAIResponse(prompt, serviceName);
+    }
 
     return new Response(
       JSON.stringify({

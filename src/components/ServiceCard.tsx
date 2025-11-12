@@ -40,7 +40,6 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
-  const isSupportedService = service.id === 1;
 
   useEffect(() => {
     const fetchAccessStatus = async () => {
@@ -111,12 +110,6 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
       });
       return;
     }
-    if (!isSupportedService) {
-      toast.error("Service Not Available", {
-        description: "This AI service is not yet integrated. Please choose Gemini AI.",
-      });
-      return;
-    }
 
     try {
       setIsPaying(true);
@@ -148,12 +141,6 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
 
   const handleSendMessage = async () => {
     if (!prompt.trim() || !walletAddress) return;
-    if (!isSupportedService) {
-      toast.error("Service Not Available", {
-        description: "This AI service is not yet integrated. Please try Gemini AI.",
-      });
-      return;
-    }
     const userMessage: ChatMessage = {
       role: "user",
       content: prompt,
@@ -305,8 +292,6 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                     variant="outline"
                     size="sm"
                     className="gap-2"
-                    disabled={!isSupportedService}
-                    title={!isSupportedService ? "This service is not integrated yet. Use Gemini AI." : undefined}
                   >
                     {showChat ? (
                       <>
@@ -392,8 +377,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
             ) : (
               <Button
                 onClick={handlePayment}
-                disabled={isPaying || !isSupportedService}
-                title={!isSupportedService ? "This service is not integrated yet. Use Gemini AI." : undefined}
+                disabled={isPaying}
                 className="w-full gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-primary/50"
               >
                 {isPaying ? (
@@ -404,7 +388,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                 ) : (
                   <>
                     <Zap className="w-5 h-5" />
-                    <span className="font-medium">{isSupportedService ? "Pay & Get 1 Hour Access" : "Coming Soon (Gemini only)"}</span>
+                    <span className="font-medium">Pay & Get 1 Hour Access</span>
                   </>
                 )}
               </Button>

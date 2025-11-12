@@ -64,7 +64,7 @@ serve(async (req) => {
     // User has valid access, generate AI response
     console.log('User has valid access, generating response for prompt:', prompt);
     
-    const serviceName = serviceId === 0 ? 'GPT-4' : 'Gemini';
+    const serviceName = serviceId === 0 ? 'GPT-4' : serviceId === 1 ? 'Gemini' : 'AI Service';
     let response: string;
 
     // For Gemini service (serviceId 1), call real Gemini API
@@ -124,14 +124,20 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             error: 'AI Service Error',
-            message: 'Failed to get response from Gemini. Please try again.'
+            message: 'Failed to connect to Gemini AI. Please try again in a moment.'
           }),
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     } else {
-      // For other services, use mock responses
-      response = generateMockAIResponse(prompt, serviceName);
+      // For other services, return an error indicating they need to use a supported service
+      return new Response(
+        JSON.stringify({ 
+          error: 'Service Not Available',
+          message: `${serviceName} is not yet integrated. Please use Gemini AI (Service ID 1) for real AI responses.`
+        }),
+        { status: 501, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(

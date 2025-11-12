@@ -161,7 +161,34 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Handle specific error cases
+        if (error.message?.includes('Payment Required') || error.message?.includes('402')) {
+          toast.error("Access Required", {
+            description: "You need to pay for access to use this service. Please purchase access first.",
+          });
+          setHasAccess(false);
+          return;
+        }
+        
+        if (error.message?.includes('Access Expired') || error.message?.includes('expired')) {
+          toast.error("Access Expired", {
+            description: "Your access has expired. Please pay again to continue using this service.",
+          });
+          setHasAccess(false);
+          setExpiresAt(null);
+          return;
+        }
+
+        if (error.message?.includes('Service Not Available') || error.message?.includes('501')) {
+          toast.error("Service Not Available", {
+            description: "This AI service is not yet integrated. Please try Gemini AI instead.",
+          });
+          return;
+        }
+
+        throw error;
+      }
 
       const assistantMessage: ChatMessage = {
         role: "assistant",
@@ -172,8 +199,8 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error: any) {
       console.error("Chat error:", error);
-      toast.error("Error", {
-        description: error.message || "Failed to send message",
+      toast.error("Connection Error", {
+        description: error.message || "Failed to connect to AI service. Please try again.",
       });
     } finally {
       setIsLoading(false);
@@ -271,12 +298,13 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                 {/* Chat Interface */}
                 {showChat && (
                   <div className="w-full space-y-3 pt-3 border-t border-border/50">
-                    <ScrollArea className="h-64 w-full rounded-lg border border-border bg-background/50 p-3">
+                     <ScrollArea className="h-64 w-full rounded-lg border border-border bg-background/50 p-3">
                       {messages.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-                          <div className="text-center">
+                          <div className="text-center space-y-2">
                             <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                            <p>Start chatting with {service.name}</p>
+                            <p className="font-medium">Start chatting with {service.name}</p>
+                            <p className="text-xs">Real AI • Blockchain-verified access</p>
                           </div>
                         </div>
                       ) : (

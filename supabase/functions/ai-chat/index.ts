@@ -128,12 +128,74 @@ serve(async (req) => {
           { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+    } else if (serviceId === 1) {
+      // For GPT-4 service (serviceId 1), call OpenAI API
+      const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+      if (!openaiApiKey) {
+        console.error('OPENAI_API_KEY not configured');
+        return new Response(
+          JSON.stringify({ error: 'OpenAI API key not configured' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        const openaiResponse = await fetch(
+          'https://api.openai.com/v1/chat/completions',
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${openaiApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'gpt-4o',
+              messages: [
+                { role: 'user', content: prompt }
+              ]
+            })
+          }
+        );
+
+        if (!openaiResponse.ok) {
+          const errorData = await openaiResponse.text();
+          console.error('OpenAI API error:', openaiResponse.status, errorData);
+          throw new Error(`OpenAI API returned ${openaiResponse.status}`);
+        }
+
+        const openaiData = await openaiResponse.json();
+        response = openaiData.choices?.[0]?.message?.content || 
+                   'Sorry, I could not generate a response.';
+
+        // Log usage for tracking/leaderboard
+        console.log('OpenAI API call successful for user:', userAddress);
+        
+        // Update usage stats in leaderboard_stats table
+        const { error: updateError } = await supabase.rpc('increment_service_usage', {
+          p_wallet_address: userAddress.toLowerCase(),
+          p_service_id: serviceId
+        });
+        
+        if (updateError) {
+          console.error('Failed to update usage stats:', updateError);
+        }
+
+      } catch (error) {
+        console.error('Error calling OpenAI API:', error);
+        return new Response(
+          JSON.stringify({ 
+            error: 'AI Service Error',
+            message: 'Failed to connect to GPT-4. Please try again in a moment.'
+          }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     } else {
       // For other services, return an error indicating they need to use a supported service
       return new Response(
         JSON.stringify({ 
           error: 'Service Not Available',
-          message: `${serviceName} is not yet integrated. Please use Gemini AI (Service ID 0) for real AI responses.`
+          message: `${serviceName} is not yet integrated. Please use Gemini AI (Service ID 0) or GPT-4 (Service ID 1) for real AI responses.`
         }),
         { status: 501, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

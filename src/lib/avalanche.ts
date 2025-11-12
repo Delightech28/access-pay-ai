@@ -24,28 +24,54 @@ export const FUJI_CONFIG = {
 // Contract address - Deployed on Avalanche Fuji Testnet
 export const CONTRACT_ADDRESS = "0x8b145549ae006dd1e8440cf50f8ee77ed6f94bd7";
 
-// Connect wallet to Avalanche Fuji
-export const connectWallet = async (): Promise<string> => {
-  if (!window.ethereum) {
-    throw new Error("Please install MetaMask or Core Wallet");
+// Detect available wallets
+export const detectWallets = () => {
+  const hasCore = !!(window as any).avalanche;
+  const hasMetaMask = !!window.ethereum && !!(window.ethereum as any).isMetaMask;
+  
+  return {
+    hasCore,
+    hasMetaMask,
+    hasAny: hasCore || hasMetaMask
+  };
+};
+
+// Get provider based on wallet type
+const getProvider = (walletType: "metamask" | "core") => {
+  if (walletType === "core") {
+    const avalanche = (window as any).avalanche;
+    if (!avalanche) {
+      throw new Error("Core Wallet not found. Please install Core Wallet.");
+    }
+    return avalanche;
+  } else {
+    if (!window.ethereum) {
+      throw new Error("MetaMask not found. Please install MetaMask.");
+    }
+    return window.ethereum;
   }
+};
+
+// Connect wallet to Avalanche Fuji
+export const connectWallet = async (walletType: "metamask" | "core"): Promise<string> => {
+  const provider = getProvider(walletType);
 
   try {
     // Request account access
-    const accounts = await window.ethereum.request({
+    const accounts = await provider.request({
       method: "eth_requestAccounts",
     });
 
     // Switch to Avalanche Fuji network
     try {
-      await window.ethereum.request({
+      await provider.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: FUJI_CONFIG.chainId }],
       });
     } catch (switchError: any) {
       // Chain not added, add it
       if (switchError.code === 4902) {
-        await window.ethereum.request({
+        await provider.request({
           method: "wallet_addEthereumChain",
           params: [FUJI_CONFIG],
         });
@@ -69,12 +95,15 @@ export const disconnectWallet = () => {
 
 // Get services from smart contract
 export const getServices = async () => {
-  if (!window.ethereum) {
+  // Use Core wallet if available, otherwise fall back to MetaMask
+  const ethereumProvider = (window as any).avalanche || window.ethereum;
+  
+  if (!ethereumProvider) {
     throw new Error("Wallet not connected");
   }
 
   try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider(ethereumProvider);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     
     const serviceCount = await contract.serviceCount();
@@ -117,12 +146,15 @@ export const payForService = async (
   price: string,
   walletAddress: string
 ): Promise<void> => {
-  if (!window.ethereum) {
+  // Use Core wallet if available, otherwise fall back to MetaMask
+  const ethereumProvider = (window as any).avalanche || window.ethereum;
+  
+  if (!ethereumProvider) {
     throw new Error("Wallet not connected");
   }
 
   try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider(ethereumProvider);
     const signer = await provider.getSigner();
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
@@ -149,12 +181,15 @@ export const checkAccess = async (
   serviceId: number,
   walletAddress: string
 ): Promise<boolean> => {
-  if (!window.ethereum || !walletAddress) {
+  // Use Core wallet if available, otherwise fall back to MetaMask
+  const ethereumProvider = (window as any).avalanche || window.ethereum;
+  
+  if (!ethereumProvider || !walletAddress) {
     return false;
   }
 
   try {
-    const provider = new ethers.BrowserProvider(window.ethereum);
+    const provider = new ethers.BrowserProvider(ethereumProvider);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     
     const hasAccess = await contract.hasAccess(walletAddress, serviceId);

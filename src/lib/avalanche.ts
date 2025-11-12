@@ -22,7 +22,7 @@ export const FUJI_CONFIG = {
 };
 
 // Contract address - Deployed on Avalanche Fuji Testnet
-export const CONTRACT_ADDRESS = "0x8b145549ae006dd1e8440cf50f8ee77ed6f94bd7";
+export const CONTRACT_ADDRESS = "0x093fbe64204b69954863722f1851f22673c44947";
 
 // Detect available wallets
 export const detectWallets = () => {
@@ -245,21 +245,9 @@ export const CONTRACT_ABI = [
         "internalType": "uint256",
         "name": "serviceId",
         "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "indexed": false,
-        "internalType": "uint256",
-        "name": "expiresAt",
-        "type": "uint256"
       }
     ],
-    "name": "AccessGranted",
+    "name": "AccessExpired",
     "type": "event"
   },
   {
@@ -276,9 +264,21 @@ export const CONTRACT_ABI = [
         "internalType": "uint256",
         "name": "serviceId",
         "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "expiresAt",
+        "type": "uint256"
       }
     ],
-    "name": "AccessExpired",
+    "name": "AccessGranted",
     "type": "event"
   },
   {
@@ -473,6 +473,30 @@ export const CONTRACT_ABI = [
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_user",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_serviceId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getAccessExpiry",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "getBalance",
     "outputs": [
@@ -529,30 +553,6 @@ export const CONTRACT_ABI = [
         "internalType": "bool",
         "name": "active",
         "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_user",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_serviceId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getAccessExpiry",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",

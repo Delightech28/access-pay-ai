@@ -80,7 +80,7 @@ serve(async (req) => {
 
       try {
         const geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-002:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-002:generateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: {

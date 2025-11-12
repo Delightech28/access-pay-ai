@@ -71,6 +71,10 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_access: { Args: never; Returns: undefined }
+      increment_service_usage: {
+        Args: { p_service_id: number; p_wallet_address: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

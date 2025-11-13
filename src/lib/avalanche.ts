@@ -24,15 +24,29 @@ export const FUJI_CONFIG = {
 // Contract address - Deployed on Avalanche Fuji Testnet
 export const CONTRACT_ADDRESS = "0x093fbe64204b69954863722f1851f22673c44947";
 
+// Detect if user is on mobile device
+export const isMobileDevice = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Detect if user is on Android
+export const isAndroid = () => {
+  return /Android/i.test(navigator.userAgent);
+};
+
 // Detect available wallets
 export const detectWallets = () => {
+  const isMobile = isMobileDevice();
   const hasCore = !!(window as any).avalanche;
   const hasMetaMask = !!window.ethereum && !!(window.ethereum as any).isMetaMask;
+  const hasAnyEthereumWallet = !!window.ethereum; // Any wallet that injects ethereum
   
   return {
     hasCore,
     hasMetaMask,
-    hasAny: hasCore || hasMetaMask
+    hasAnyEthereumWallet,
+    isMobile,
+    hasAny: isMobile ? hasAnyEthereumWallet : (hasCore || hasMetaMask)
   };
 };
 
@@ -52,8 +66,53 @@ const getProvider = (walletType: "metamask" | "core") => {
   }
 };
 
+// Connect mobile wallet (any EVM wallet)
+export const connectMobileWallet = async (): Promise<string> => {
+  if (!window.ethereum) {
+    throw new Error("No wallet found. Please install an EVM wallet like MetaMask, Trust Wallet, or any other Ethereum wallet.");
+  }
+
+  try {
+    // Request account access
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+
+    if (!accounts || accounts.length === 0) {
+      throw new Error("No accounts found. Please unlock your wallet.");
+    }
+
+    // Auto-switch to Avalanche Fuji network
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: FUJI_CONFIG.chainId }],
+      });
+    } catch (switchError: any) {
+      // Chain not added, add it
+      if (switchError.code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [FUJI_CONFIG],
+        });
+      } else {
+        throw switchError;
+      }
+    }
+
+    return accounts[0];
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to connect wallet");
+  }
+};
+
 // Connect wallet to Avalanche Fuji
 export const connectWallet = async (walletType: "metamask" | "core"): Promise<string> => {
+  // On mobile, use generic mobile wallet connection
+  if (isMobileDevice()) {
+    return connectMobileWallet();
+  }
+
   const provider = getProvider(walletType);
 
   try {

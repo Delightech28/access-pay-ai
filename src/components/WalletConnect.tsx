@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Wallet, LogOut } from "lucide-react";
+import { Wallet, LogOut, Smartphone } from "lucide-react";
 import { useWallet } from "@/contexts/WalletContext";
 import { useState } from "react";
 import WalletSelectionDialog from "./WalletSelectionDialog";
@@ -13,6 +13,24 @@ const WalletConnect = () => {
   const handleConnectClick = () => {
     const wallets = detectWallets();
     
+    // Mobile device - connect directly to any available EVM wallet
+    if (wallets.isMobile) {
+      if (!wallets.hasAnyEthereumWallet) {
+        toast.error("No wallet found", {
+          description: "Please install an EVM wallet like MetaMask or Trust Wallet",
+        });
+        return;
+      }
+      
+      // On mobile, connect with "metamask" type which will use the generic mobile connection
+      toast.info("Connecting to your wallet...", {
+        description: "Your wallet will auto-switch to Avalanche Fuji network",
+      });
+      connectWallet("metamask");
+      return;
+    }
+    
+    // Desktop - existing logic
     if (!wallets.hasAny) {
       toast.error("No wallet found", {
         description: "Please install Core Wallet or MetaMask",
@@ -55,6 +73,8 @@ const WalletConnect = () => {
     );
   }
 
+  const wallets = detectWallets();
+
   return (
     <>
       <Button
@@ -62,7 +82,7 @@ const WalletConnect = () => {
         disabled={isConnecting}
         className="gap-2 glow-primary hover:scale-105 transition-transform"
       >
-        <Wallet className="w-4 h-4" />
+        {wallets.isMobile ? <Smartphone className="w-4 h-4" /> : <Wallet className="w-4 h-4" />}
         {isConnecting ? "Connecting..." : "Connect Wallet"}
       </Button>
       

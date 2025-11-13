@@ -87,7 +87,7 @@ export const connectMobileWallet = async (): Promise<string> => {
   }
 
   try {
-    // Request account access
+    // Request account access first
     const accounts = await window.ethereum.request({
       method: "eth_requestAccounts",
     });
@@ -96,26 +96,37 @@ export const connectMobileWallet = async (): Promise<string> => {
       throw new Error("No accounts found. Please unlock your wallet.");
     }
 
-    // Auto-switch to Avalanche Fuji network
+    // Try to switch/add Fuji network - let wallet handle if already on correct network
     try {
       await window.ethereum.request({
         method: "wallet_switchEthereumChain",
         params: [{ chainId: FUJI_CONFIG.chainId }],
       });
+      console.log('Successfully switched to Fuji network');
     } catch (switchError: any) {
-      // Chain not added, add it
-      if (switchError.code === 4902) {
-        await window.ethereum.request({
-          method: "wallet_addEthereumChain",
-          params: [FUJI_CONFIG],
-        });
-      } else {
-        throw switchError;
+      console.log('Switch error:', switchError);
+      // Chain not added, add it (code 4902 or -32603)
+      if (switchError.code === 4902 || switchError.code === -32603) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [FUJI_CONFIG],
+          });
+          console.log('Successfully added Fuji network');
+        } catch (addError) {
+          console.error('Could not add network:', addError);
+          // If already connected to correct network, ignore error
+        }
+      } else if (switchError.code === 4001) {
+        // User rejected the request
+        throw new Error("You need to switch to Avalanche Fuji network to use this app");
       }
+      // Ignore other switch errors - might already be on correct network
     }
 
     return accounts[0];
   } catch (error: any) {
+    console.error('Mobile wallet connection error:', error);
     throw new Error(error.message || "Failed to connect wallet");
   }
 };

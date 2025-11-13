@@ -168,8 +168,10 @@ export const disconnectWallet = () => {
 
 // Get services from smart contract
 export const getServices = async () => {
-  // Use Core wallet if available, otherwise fall back to MetaMask
-  const ethereumProvider = (window as any).avalanche || window.ethereum;
+  // On mobile, use window.ethereum directly. On desktop, prefer Core wallet
+  const ethereumProvider = isMobileDevice() 
+    ? window.ethereum 
+    : ((window as any).avalanche || window.ethereum);
   
   if (!ethereumProvider) {
     throw new Error("Wallet not connected");
@@ -219,8 +221,10 @@ export const payForService = async (
   price: string,
   walletAddress: string
 ): Promise<void> => {
-  // Use Core wallet if available, otherwise fall back to MetaMask
-  const ethereumProvider = (window as any).avalanche || window.ethereum;
+  // On mobile, use window.ethereum directly. On desktop, prefer Core wallet
+  const ethereumProvider = isMobileDevice() 
+    ? window.ethereum 
+    : ((window as any).avalanche || window.ethereum);
   
   if (!ethereumProvider) {
     throw new Error("Wallet not connected");
@@ -254,8 +258,10 @@ export const checkAccess = async (
   serviceId: number,
   walletAddress: string
 ): Promise<boolean> => {
-  // Use Core wallet if available, otherwise fall back to MetaMask
-  const ethereumProvider = (window as any).avalanche || window.ethereum;
+  // On mobile, use window.ethereum directly. On desktop, prefer Core wallet
+  const ethereumProvider = isMobileDevice() 
+    ? window.ethereum 
+    : ((window as any).avalanche || window.ethereum);
   
   if (!ethereumProvider || !walletAddress) {
     return false;
@@ -278,8 +284,10 @@ export const getAccessExpiry = async (
   serviceId: number,
   walletAddress: string
 ): Promise<number> => {
-  // Use Core wallet if available, otherwise fall back to MetaMask
-  const ethereumProvider = (window as any).avalanche || window.ethereum;
+  // On mobile, use window.ethereum directly. On desktop, prefer Core wallet
+  const ethereumProvider = isMobileDevice() 
+    ? window.ethereum 
+    : ((window as any).avalanche || window.ethereum);
   
   if (!ethereumProvider || !walletAddress) {
     return 0;

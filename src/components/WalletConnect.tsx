@@ -10,14 +10,18 @@ const WalletConnect = () => {
   const { walletAddress, isConnected, isConnecting, walletType, connectWallet, disconnectWallet } = useWallet();
   const [showWalletDialog, setShowWalletDialog] = useState(false);
 
-  const handleConnectClick = () => {
+  const handleConnectClick = async () => {
+    // Add small delay to allow wallet providers to inject
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     const wallets = detectWallets();
     
     // Mobile device - connect directly to any available EVM wallet
     if (wallets.isMobile) {
       if (!wallets.hasAnyEthereumWallet) {
-        toast.error("No wallet found", {
-          description: "Please install an EVM wallet like MetaMask or Trust Wallet",
+        toast.error("No wallet detected", {
+          description: "Please open this page in your wallet's browser (MetaMask, Trust Wallet, or Bitget)",
+          duration: 6000,
         });
         return;
       }

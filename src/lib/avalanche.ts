@@ -34,16 +34,30 @@ export const isAndroid = () => {
   return /Android/i.test(navigator.userAgent);
 };
 
-// Detect available wallets
+// Detect available wallets with improved mobile detection
 export const detectWallets = () => {
   const isMobile = isMobileDevice();
   const hasCore = !!(window as any).avalanche;
   const hasMetaMask = !!window.ethereum && !!(window.ethereum as any).isMetaMask;
-  const hasAnyEthereumWallet = !!window.ethereum; // Any wallet that injects ethereum
+  const hasTrustWallet = !!window.ethereum && !!(window.ethereum as any).isTrust;
+  const hasBitget = !!window.ethereum && !!(window as any).bitkeep;
+  const hasAnyEthereumWallet = !!window.ethereum;
+  
+  // Log detected providers for debugging
+  console.log('Wallet detection:', {
+    isMobile,
+    hasEthereum: !!window.ethereum,
+    isMetaMask: !!(window.ethereum as any)?.isMetaMask,
+    isTrust: !!(window.ethereum as any)?.isTrust,
+    isBitget: !!(window as any)?.bitkeep,
+    providers: window.ethereum ? Object.keys(window.ethereum).filter(k => k.includes('is')) : []
+  });
   
   return {
     hasCore,
     hasMetaMask,
+    hasTrustWallet,
+    hasBitget,
     hasAnyEthereumWallet,
     isMobile,
     hasAny: isMobile ? hasAnyEthereumWallet : (hasCore || hasMetaMask)

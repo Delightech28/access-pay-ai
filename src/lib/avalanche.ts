@@ -190,6 +190,16 @@ export const getServices = async () => {
 
   try {
     const provider = new ethers.BrowserProvider(ethereumProvider);
+    
+    // Verify we're on the correct network
+    const network = await provider.getNetwork();
+    console.log('Current network chainId:', network.chainId);
+    
+    if (network.chainId !== BigInt(43113)) {
+      console.error('Wrong network detected. Expected Fuji (43113), got:', network.chainId);
+      throw new Error("Please switch to Avalanche Fuji Testnet in your wallet");
+    }
+    
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
     
     const serviceCount = await contract.serviceCount();

@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2, Loader2, Zap, Send, MessageSquare, X, Clock, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
-import { payForService } from "@/lib/avalanche";
+import { payForService, getAccessExpiry } from "@/lib/avalanche";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Service {
@@ -114,19 +114,34 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
     try {
       setIsPaying(true);
       await payForService(service.id, service.price, walletAddress);
-      
-      // Track access in database with expiration
-      const { data, error } = await supabase.functions.invoke('track-access', {
-        body: {
-          walletAddress,
-          serviceId: service.id,
-          priceInAVAX: service.price
+
+      // Attempt to track access in backend, but don't fail UX if this errors
+      try {
+        const { data, error } = await supabase.functions.invoke('track-access', {
+          body: {
+            walletAddress,
+            serviceId: service.id,
+            priceInAVAX: service.price
+          }
+        });
+
+        if (!error && data?.expiresAt) {
+          setExpiresAt(data.expiresAt);
+        } else if (error) {
+          console.warn('track-access failed, falling back to on-chain expiry:', error);
         }
-      });
+      } catch (trackError) {
+        console.warn('track-access invocation error:', trackError);
+      }
 
-      if (error) throw error;
+      // Fallback: fetch on-chain expiry to update UI if backend tracking failed
+      if (!expiresAt) {
+        const onChainExpiry = await getAccessExpiry(service.id, walletAddress);
+        if (onChainExpiry && onChainExpiry > 0) {
+          setExpiresAt(new Date(onChainExpiry * 1000).toISOString());
+        }
+      }
 
-      setExpiresAt(data.expiresAt);
       setHasAccess(true);
       setShowSuccessModal(true);
     } catch (error: any) {

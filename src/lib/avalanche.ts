@@ -297,26 +297,64 @@ export const payForService = async (
     throw new Error("Wallet not connected");
   }
 
+  console.log(`Starting payment for service ${serviceId}, price: ${price} AVAX`);
+
   try {
     const provider = new ethers.BrowserProvider(ethereumProvider);
+    
+    // Verify network before payment
+    const network = await provider.getNetwork();
+    console.log('Payment network chainId:', network.chainId);
+    
+    if (network.chainId !== BigInt(43113)) {
+      throw new Error("Wrong network. Please switch to Avalanche Fuji Testnet");
+    }
+    
     const signer = await provider.getSigner();
+    console.log('Signer address:', await signer.getAddress());
+    
+    // Check balance
+    const balance = await provider.getBalance(walletAddress);
+    const balanceInAvax = ethers.formatEther(balance);
+    console.log('Wallet balance:', balanceInAvax, 'AVAX');
+    
+    const priceInWei = ethers.parseEther(price);
+    
+    if (balance < priceInWei) {
+      throw new Error(`Insufficient balance. You have ${balanceInAvax} AVAX but need ${price} AVAX`);
+    }
+    
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
-    // Convert price to wei
-    const priceInWei = ethers.parseEther(price);
-
-    // Call payForService with the exact price
+    console.log('Sending transaction...');
     const tx = await contract.payForService(serviceId, {
       value: priceInWei,
     });
 
-    // Wait for transaction confirmation
-    await tx.wait();
+    console.log('Transaction sent:', tx.hash);
+    console.log('Waiting for confirmation...');
     
-    console.log(`Payment successful for service ${serviceId}`);
+    const receipt = await tx.wait();
+    console.log(`Payment confirmed! Block: ${receipt.blockNumber}`);
+    
   } catch (error: any) {
-    console.error("Payment error:", error);
-    throw new Error(error.message || "Transaction failed");
+    console.error("Payment error details:", {
+      message: error.message,
+      code: error.code,
+      reason: error.reason,
+      error
+    });
+    
+    // User-friendly error messages
+    if (error.code === 4001 || error.code === "ACTION_REJECTED") {
+      throw new Error("Transaction cancelled by user");
+    } else if (error.message?.includes("insufficient funds")) {
+      throw new Error("Insufficient AVAX balance for this transaction");
+    } else if (error.message?.includes("network")) {
+      throw new Error("Network error. Please check your connection");
+    }
+    
+    throw new Error(error.reason || error.message || "Payment failed. Please try again");
   }
 };
 

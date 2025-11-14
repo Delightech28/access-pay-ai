@@ -179,32 +179,25 @@ export const disconnectWallet = () => {
 
 // Get services from smart contract
 export const getServices = async () => {
-  // On mobile, use window.ethereum directly. On desktop, prefer Core wallet
-  const ethereumProvider = isMobileDevice() 
-    ? window.ethereum 
-    : ((window as any).avalanche || window.ethereum);
-  
-  if (!ethereumProvider) {
-    throw new Error("Wallet not connected");
-  }
+  // Prefer a read-only RPC provider to avoid wallet quirks on mobile
+  const readOnlyRpc = FUJI_CONFIG.rpcUrls[0];
 
   try {
-    const provider = new ethers.BrowserProvider(ethereumProvider);
+    const provider = new ethers.JsonRpcProvider(readOnlyRpc);
     
-    // Verify we're on the correct network
+    // Verify provider network
     const network = await provider.getNetwork();
-    console.log('Current network chainId:', network.chainId);
-    
+    console.log('Read-only provider network chainId:', network.chainId);
+
     if (network.chainId !== BigInt(43113)) {
-      console.error('Wrong network detected. Expected Fuji (43113), got:', network.chainId);
-      throw new Error("Please switch to Avalanche Fuji Testnet in your wallet");
+      throw new Error(`Read-only provider not on Fuji. Got ${network.chainId}`);
     }
-    
+
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-    
+
     const serviceCount = await contract.serviceCount();
-    console.log(`Total services on blockchain: ${serviceCount}`);
-    const services = [];
+    console.log(`Total services on blockchain (read-only): ${serviceCount}`);
+    const services = [] as any[];
 
     for (let i = 0; i < serviceCount; i++) {
       const service = await contract.getService(i);
@@ -214,7 +207,60 @@ export const getServices = async () => {
         price: ethers.formatEther(service.price)
       });
 
-      // Only include active services
+      if (service.active) {
+        services.push({
+          id: Number(service.id),
+          name: service.name,
+          category: service.category,
+          description: service.description,
+          price: ethers.formatEther(service.price),
+          provider: service.provider,
+          active: service.active,
+        });
+      }
+    }
+
+    console.log(`Active services found: ${services.length}`);
+    return services;
+  } catch (rpcError) {
+    console.warn('Read-only RPC failed, falling back to wallet provider:', rpcError);
+  }
+
+  // Fallback to wallet provider if RPC fails
+  const ethereumProvider = isMobileDevice() 
+    ? window.ethereum 
+    : ((window as any).avalanche || window.ethereum);
+
+  if (!ethereumProvider) {
+    throw new Error("Wallet not connected");
+  }
+
+  try {
+    const provider = new ethers.BrowserProvider(ethereumProvider);
+    
+    // Verify we're on the correct network
+    const network = await provider.getNetwork();
+    console.log('Wallet provider network chainId:', network.chainId);
+    
+    if (network.chainId !== BigInt(43113)) {
+      console.error('Wrong network detected. Expected Fuji (43113), got:', network.chainId);
+      throw new Error("Please switch to Avalanche Fuji Testnet in your wallet");
+    }
+    
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
+    
+    const serviceCount = await contract.serviceCount();
+    console.log(`Total services on blockchain (wallet): ${serviceCount}`);
+    const services = [] as any[];
+
+    for (let i = 0; i < serviceCount; i++) {
+      const service = await contract.getService(i);
+      console.log(`Service ${i}:`, {
+        name: service.name,
+        active: service.active,
+        price: ethers.formatEther(service.price)
+      });
+
       if (service.active) {
         services.push({
           id: Number(service.id),
@@ -231,7 +277,7 @@ export const getServices = async () => {
     console.log(`Active services found: ${services.length}`);
     return services;
   } catch (error: any) {
-    console.error("Error fetching services:", error);
+    console.error("Error fetching services via wallet provider:", error);
     throw new Error("Failed to fetch services from contract");
   }
 };

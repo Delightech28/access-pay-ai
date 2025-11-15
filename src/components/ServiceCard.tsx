@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle2, Loader2, Zap, Send, MessageSquare, X, Clock, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
-import { payForService, getAccessExpiry } from "@/lib/avalanche";
+import { payForService, getAccessExpiry, checkAccess } from "@/lib/avalanche";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Service {
@@ -113,6 +113,18 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
 
     try {
       setIsPaying(true);
+      
+      // Check if user already has access before attempting payment
+      const currentAccess = await checkAccess(service.id, walletAddress);
+      if (currentAccess) {
+        toast.info("Already Active", {
+          description: "You already have access to this service!",
+        });
+        setHasAccess(true);
+        setIsPaying(false);
+        return;
+      }
+      
       await payForService(service.id, service.price, walletAddress);
 
       // Attempt to track access in backend, but don't fail UX if this errors

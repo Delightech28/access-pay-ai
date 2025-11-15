@@ -367,23 +367,36 @@ export const checkAccess = async (
   serviceId: number,
   walletAddress: string
 ): Promise<boolean> => {
-  // On mobile, use window.ethereum directly. On desktop, prefer Core wallet
-  const ethereumProvider = isMobileDevice() 
-    ? window.ethereum 
+  if (!walletAddress) {
+    return false;
+  }
+
+  // Prefer read-only RPC for reliability (works without wallet)
+  try {
+    const roProvider = new ethers.JsonRpcProvider(FUJI_CONFIG.rpcUrls[0]);
+    const roContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, roProvider);
+    const has = await roContract.hasAccess(walletAddress, serviceId);
+    return has;
+  } catch (rpcError) {
+    console.warn('checkAccess RPC failed, falling back to wallet provider:', rpcError);
+  }
+
+  // Fallback to wallet provider
+  const ethereumProvider = isMobileDevice()
+    ? window.ethereum
     : ((window as any).avalanche || window.ethereum);
-  
-  if (!ethereumProvider || !walletAddress) {
+
+  if (!ethereumProvider) {
     return false;
   }
 
   try {
     const provider = new ethers.BrowserProvider(ethereumProvider);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-    
     const hasAccess = await contract.hasAccess(walletAddress, serviceId);
     return hasAccess;
   } catch (error: any) {
-    console.error("Error checking access:", error);
+    console.error("Error checking access via wallet:", error);
     return false;
   }
 };
@@ -393,23 +406,34 @@ export const getAccessExpiry = async (
   serviceId: number,
   walletAddress: string
 ): Promise<number> => {
-  // On mobile, use window.ethereum directly. On desktop, prefer Core wallet
-  const ethereumProvider = isMobileDevice() 
-    ? window.ethereum 
+  if (!walletAddress) return 0;
+
+  // Prefer read-only RPC first
+  try {
+    const roProvider = new ethers.JsonRpcProvider(FUJI_CONFIG.rpcUrls[0]);
+    const roContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, roProvider);
+    const expiryTimestamp = await roContract.getAccessExpiry(walletAddress, serviceId);
+    return Number(expiryTimestamp);
+  } catch (rpcError) {
+    console.warn('getAccessExpiry RPC failed, falling back to wallet provider:', rpcError);
+  }
+
+  // Fallback to wallet provider
+  const ethereumProvider = isMobileDevice()
+    ? window.ethereum
     : ((window as any).avalanche || window.ethereum);
   
-  if (!ethereumProvider || !walletAddress) {
+  if (!ethereumProvider) {
     return 0;
   }
 
   try {
     const provider = new ethers.BrowserProvider(ethereumProvider);
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
-    
     const expiryTimestamp = await contract.getAccessExpiry(walletAddress, serviceId);
     return Number(expiryTimestamp);
   } catch (error: any) {
-    console.error("Error getting access expiry:", error);
+    console.error("Error getting access expiry via wallet:", error);
     return 0;
   }
 };

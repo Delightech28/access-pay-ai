@@ -29,24 +29,53 @@ serve(async (req) => {
     // Calculate expiration time (1 hour from now)
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 
-    // Upsert access record with new expiration time
-    const { error: accessError } = await supabase
+    // Find existing access record and update or insert
+    const { data: existingAccess, error: findError } = await supabase
       .from('access_records')
-      .upsert({
-        wallet_address: walletAddress,
-        service_id: serviceId,
-        expires_at: expiresAt,
-      }, {
-        onConflict: 'wallet_address,service_id'
-      });
+      .select('id')
+      .eq('wallet_address', walletAddress)
+      .eq('service_id', serviceId)
+      .single();
 
-    if (accessError) {
-      console.error('Error updating access record:', accessError);
+    if (findError && findError.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error finding access record:', findError);
       return new Response(
         JSON.stringify({ error: 'Failed to track access' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    if (existingAccess) {
+      const { error: updateAccessError } = await supabase
+        .from('access_records')
+        .update({ expires_at: expiresAt })
+        .eq('id', existingAccess.id);
+
+      if (updateAccessError) {
+        console.error('Error updating access record:', updateAccessError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to track access' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else {
+      const { error: insertAccessError } = await supabase
+        .from('access_records')
+        .insert({
+          wallet_address: walletAddress,
+          service_id: serviceId,
+          expires_at: expiresAt,
+        });
+
+      if (insertAccessError) {
+        console.error('Error inserting access record:', insertAccessError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to track access' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
 
     // Update leaderboard stats
     const { data: existingStats } = await supabase
@@ -57,12 +86,13 @@ serve(async (req) => {
 
     if (existingStats) {
       // Update existing stats
-      const newTotalSpent = parseFloat(existingStats.total_spent) + parseFloat(priceInAVAX);
+      const prevTotal = parseFloat(String(existingStats.total_spent ?? 0));
+      const newTotalSpent = prevTotal + parseFloat(String(priceInAVAX));
       const { error: updateError } = await supabase
         .from('leaderboard_stats')
         .update({
           total_spent: newTotalSpent,
-          services_used: existingStats.services_used + 1,
+          services_used: (existingStats.services_used ?? 0) + 1,
           last_payment_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

@@ -65,7 +65,14 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
           if (result.hasAccess && result.expiresAt) {
             setExpiresAt(result.expiresAt);
           } else {
-            setExpiresAt(null);
+            // Fallback to on-chain state to avoid stale backend data
+            const onChainExpiry = await getAccessExpiry(service.id, walletAddress);
+            if (onChainExpiry && onChainExpiry * 1000 > Date.now()) {
+              setHasAccess(true);
+              setExpiresAt(new Date(onChainExpiry * 1000).toISOString());
+            } else {
+              setExpiresAt(null);
+            }
           }
         } catch (error) {
           console.error("Error checking access:", error);

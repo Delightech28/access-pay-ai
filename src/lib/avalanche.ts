@@ -352,6 +352,10 @@ export const payForService = async (
       throw new Error("Insufficient AVAX balance for this transaction");
     } else if (error.message?.includes("network")) {
       throw new Error("Network error. Please check your connection");
+    } else if (error.message?.includes("Access already granted") || error.reason?.includes("Access already granted")) {
+      throw new Error("You already have active access to this service");
+    } else if (error.message?.includes("Insufficient payment") || error.reason?.includes("Insufficient payment")) {
+      throw new Error("Payment amount is insufficient for this service");
     }
     
     throw new Error(error.reason || error.message || "Payment failed. Please try again");

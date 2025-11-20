@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, Loader2, Zap, Send, MessageSquare, X, Clock, CheckCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Zap, Send, MessageSquare, X, Clock, CheckCircle, Maximize2, Minimize2 } from "lucide-react";
 import { toast } from "sonner";
 import { payForService, getAccessExpiry, checkAccess } from "@/lib/avalanche";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +40,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const fetchAccessStatus = async () => {
@@ -343,8 +344,56 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
 
                 {/* Chat Interface */}
                 {showChat && (
-                  <div className="w-full space-y-3 pt-3 border-t border-border/50">
-                     <ScrollArea className="h-64 w-full rounded-lg border border-border bg-background/50 p-3">
+                  <div className={`space-y-3 pt-3 border-t border-border/50 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-6 flex flex-col' : 'w-full'}`}>
+                    {/* Fullscreen Header */}
+                    {isFullscreen && (
+                      <div className="flex items-center justify-between pb-3 border-b border-border">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-5 h-5 text-primary" />
+                          <h3 className="text-lg font-semibold">{service.name}</h3>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => setIsFullscreen(false)}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                          >
+                            <Minimize2 className="w-4 h-4" />
+                            Exit Fullscreen
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              setShowChat(false);
+                              setIsFullscreen(false);
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="gap-2"
+                          >
+                            <X className="w-4 h-4" />
+                            Close
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Expand Button (non-fullscreen) */}
+                    {!isFullscreen && (
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={() => setIsFullscreen(true)}
+                          variant="ghost"
+                          size="sm"
+                          className="gap-2"
+                        >
+                          <Maximize2 className="w-4 h-4" />
+                          Expand
+                        </Button>
+                      </div>
+                    )}
+
+                    <ScrollArea className={`rounded-lg border border-border bg-background/50 p-3 ${isFullscreen ? 'flex-1' : 'h-64 w-full'}`}>
                       {messages.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                           <div className="text-center space-y-2">

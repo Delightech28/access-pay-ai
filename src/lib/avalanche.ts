@@ -297,9 +297,25 @@ export const payForService = async (
     throw new Error("Wallet not connected");
   }
 
-  console.log(`Starting payment for service ${serviceId}, price: ${price} AVAX`);
+  const isMobile = isMobileDevice();
+  console.log(`Starting payment for service ${serviceId}, price: ${price} AVAX (Mobile: ${isMobile})`);
 
   try {
+    // For mobile, ensure accounts are connected first
+    if (isMobile) {
+      try {
+        const accounts = await ethereumProvider.request({ method: 'eth_accounts' });
+        console.log('Mobile accounts check:', accounts);
+        
+        if (!accounts || accounts.length === 0) {
+          console.log('No accounts found, requesting access...');
+          await ethereumProvider.request({ method: 'eth_requestAccounts' });
+        }
+      } catch (accountError) {
+        console.warn('Account check warning:', accountError);
+      }
+    }
+
     const provider = new ethers.BrowserProvider(ethereumProvider);
     
     // Verify network before payment
@@ -311,7 +327,13 @@ export const payForService = async (
     }
     
     const signer = await provider.getSigner();
-    console.log('Signer address:', await signer.getAddress());
+    const signerAddress = await signer.getAddress();
+    console.log('Signer address:', signerAddress);
+    
+    // Verify signer matches wallet address
+    if (signerAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+      throw new Error("Wallet address mismatch. Please reconnect your wallet");
+    }
     
     // Check balance
     const balance = await provider.getBalance(walletAddress);
@@ -327,9 +349,22 @@ export const payForService = async (
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
     console.log('Sending transaction...');
-    const tx = await contract.payForService(serviceId, {
-      value: priceInWei,
-    });
+    
+    // For mobile, add explicit gas estimation with buffer
+    let txOptions: any = { value: priceInWei };
+    
+    if (isMobile) {
+      try {
+        const gasEstimate = await contract.payForService.estimateGas(serviceId, { value: priceInWei });
+        // Add 20% buffer for mobile wallets
+        txOptions.gasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
+        console.log('Mobile gas estimate with buffer:', txOptions.gasLimit.toString());
+      } catch (gasError) {
+        console.warn('Gas estimation failed, wallet will estimate:', gasError);
+      }
+    }
+    
+    const tx = await contract.payForService(serviceId, txOptions);
 
     console.log('Transaction sent:', tx.hash);
     console.log('Waiting for confirmation...');
@@ -342,20 +377,27 @@ export const payForService = async (
       message: error.message,
       code: error.code,
       reason: error.reason,
+      isMobile,
       error
     });
     
     // User-friendly error messages
     if (error.code === 4001 || error.code === "ACTION_REJECTED") {
       throw new Error("Transaction cancelled by user");
+    } else if (error.message?.includes("user rejected")) {
+      throw new Error("Transaction rejected in wallet");
     } else if (error.message?.includes("insufficient funds")) {
       throw new Error("Insufficient AVAX balance for this transaction");
-    } else if (error.message?.includes("network")) {
-      throw new Error("Network error. Please check your connection");
+    } else if (error.message?.includes("network") || error.message?.includes("timeout")) {
+      throw new Error("Network error. Please check your connection and try again");
     } else if (error.message?.includes("Access already granted") || error.reason?.includes("Access already granted")) {
       throw new Error("You already have active access to this service");
     } else if (error.message?.includes("Insufficient payment") || error.reason?.includes("Insufficient payment")) {
       throw new Error("Payment amount is insufficient for this service");
+    } else if (error.message?.includes("Wrong network")) {
+      throw error;
+    } else if (error.message?.includes("Wallet address mismatch")) {
+      throw error;
     }
     
     throw new Error(error.reason || error.message || "Payment failed. Please try again");

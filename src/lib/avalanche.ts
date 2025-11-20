@@ -335,10 +335,27 @@ export const payForService = async (
       throw new Error("Wallet address mismatch. Please reconnect your wallet");
     }
     
-    // Check balance
-    const balance = await provider.getBalance(walletAddress);
+    // Check balance using dedicated RPC provider for reliability on mobile
+    let balance;
+    try {
+      // Use dedicated RPC provider (more reliable on mobile)
+      const rpcProvider = new ethers.JsonRpcProvider(FUJI_CONFIG.rpcUrls[0]);
+      balance = await rpcProvider.getBalance(walletAddress);
+      console.log('Balance check via RPC:', ethers.formatEther(balance), 'AVAX');
+    } catch (rpcError) {
+      console.warn('RPC balance check failed, trying wallet provider:', rpcError);
+      // Fallback to wallet provider
+      try {
+        balance = await provider.getBalance(walletAddress);
+        console.log('Balance check via wallet:', ethers.formatEther(balance), 'AVAX');
+      } catch (walletError) {
+        console.error('Both balance checks failed:', { rpcError, walletError });
+        throw new Error('Unable to check balance. Please check your network connection.');
+      }
+    }
+    
     const balanceInAvax = ethers.formatEther(balance);
-    console.log('Wallet balance:', balanceInAvax, 'AVAX');
+    console.log('Final wallet balance:', balanceInAvax, 'AVAX');
     
     const priceInWei = ethers.parseEther(price);
     

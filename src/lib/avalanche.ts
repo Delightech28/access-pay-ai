@@ -316,17 +316,41 @@ export const payForService = async (
       }
     }
 
-    const provider = new ethers.BrowserProvider(ethereumProvider);
+    // Use public RPC for all read operations (more reliable on mobile)
+    const rpcProvider = new ethers.JsonRpcProvider(FUJI_CONFIG.rpcUrls[0]);
+    console.log('Using public RPC for read operations');
     
-    // Verify network before payment
-    const network = await provider.getNetwork();
-    console.log('Payment network chainId:', network.chainId);
+    // Verify network using RPC
+    const network = await rpcProvider.getNetwork();
+    console.log('Network chainId:', network.chainId);
     
     if (network.chainId !== BigInt(43113)) {
       throw new Error("Wrong network. Please switch to Avalanche Fuji Testnet");
     }
     
-    const signer = await provider.getSigner();
+    // Check balance using public RPC
+    let balanceInAvax = "unknown";
+    try {
+      const balance = await rpcProvider.getBalance(walletAddress);
+      balanceInAvax = ethers.formatEther(balance);
+      console.log('Wallet balance:', balanceInAvax, 'AVAX');
+      
+      const priceInWei = ethers.parseEther(price);
+      if (balance < priceInWei) {
+        throw new Error(`Insufficient balance. You have ${balanceInAvax} AVAX but need ${price} AVAX`);
+      }
+    } catch (balanceError: any) {
+      console.warn('Balance check failed:', balanceError);
+      // On mobile, proceed anyway (blockchain will validate)
+      if (!isMobile) {
+        throw balanceError;
+      }
+      console.log('Proceeding with transaction despite balance check failure...');
+    }
+    
+    // Only use wallet provider for signing
+    const walletProvider = new ethers.BrowserProvider(ethereumProvider);
+    const signer = await walletProvider.getSigner();
     const signerAddress = await signer.getAddress();
     console.log('Signer address:', signerAddress);
     
@@ -335,57 +359,24 @@ export const payForService = async (
       throw new Error("Wallet address mismatch. Please reconnect your wallet");
     }
     
-    // Check balance - optional on mobile to avoid RPC errors blocking payment
-    let balanceInAvax = "unknown";
-    try {
-      let balance;
-      if (isMobile) {
-        // On mobile, try RPC only (skip wallet provider to avoid unreliable providers)
-        const rpcProvider = new ethers.JsonRpcProvider(FUJI_CONFIG.rpcUrls[0]);
-        balance = await rpcProvider.getBalance(walletAddress);
-        balanceInAvax = ethers.formatEther(balance);
-        console.log('Mobile balance check via RPC:', balanceInAvax, 'AVAX');
-        
-        // Verify sufficient funds
-        const priceInWei = ethers.parseEther(price);
-        if (balance < priceInWei) {
-          throw new Error(`Insufficient balance. You have ${balanceInAvax} AVAX but need ${price} AVAX`);
-        }
-      } else {
-        // On desktop, use wallet provider
-        balance = await provider.getBalance(walletAddress);
-        balanceInAvax = ethers.formatEther(balance);
-        console.log('Desktop balance:', balanceInAvax, 'AVAX');
-        
-        const priceInWei = ethers.parseEther(price);
-        if (balance < priceInWei) {
-          throw new Error(`Insufficient balance. You have ${balanceInAvax} AVAX but need ${price} AVAX`);
-        }
-      }
-    } catch (balanceError: any) {
-      console.warn('Balance check failed:', balanceError);
-      
-      // On mobile, if balance check fails, proceed anyway (blockchain will validate)
-      if (isMobile) {
-        console.log('Skipping balance check on mobile, proceeding with transaction...');
-      } else {
-        // On desktop, re-throw the error
-        throw balanceError;
-      }
-    }
-    
     const priceInWei = ethers.parseEther(price);
     
+    // Create contract instance with signer for transaction
     const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
     console.log('Sending transaction...');
     
-    // For mobile, add explicit gas estimation with buffer
+    // For mobile, add explicit gas estimation with buffer using public RPC
     let txOptions: any = { value: priceInWei };
     
     if (isMobile) {
       try {
-        const gasEstimate = await contract.payForService.estimateGas(serviceId, { value: priceInWei });
+        // Use public RPC for gas estimation
+        const rpcContract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, rpcProvider);
+        const gasEstimate = await rpcContract.payForService.estimateGas(serviceId, { 
+          value: priceInWei,
+          from: walletAddress 
+        });
         // Add 20% buffer for mobile wallets
         txOptions.gasLimit = (gasEstimate * BigInt(120)) / BigInt(100);
         console.log('Mobile gas estimate with buffer:', txOptions.gasLimit.toString());

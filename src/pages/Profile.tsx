@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
+import { useTheme } from "next-themes";
 
 const serviceNames: { [key: number]: string } = {
   0: "Gemini AI",
@@ -20,7 +21,8 @@ const serviceNames: { [key: number]: string } = {
 const Profile = () => {
   const { walletAddress, isConnected, disconnectWallet } = useWallet();
   const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const isLightMode = theme === "light";
 
   // Fetch access history
   const { data: accessHistory, isLoading } = useQuery({
@@ -34,6 +36,23 @@ const Profile = () => {
         .order("created_at", { ascending: false });
       
       if (error) throw error;
+      return data;
+    },
+    enabled: !!walletAddress && isConnected,
+  });
+
+  // Fetch leaderboard stats for services used
+  const { data: stats } = useQuery({
+    queryKey: ["leaderboardStats", walletAddress],
+    queryFn: async () => {
+      if (!walletAddress) return null;
+      const { data, error } = await supabase
+        .from("leaderboard_stats")
+        .select("*")
+        .eq("wallet_address", walletAddress)
+        .single();
+      
+      if (error && error.code !== "PGRST116") throw error;
       return data;
     },
     enabled: !!walletAddress && isConnected,
@@ -85,6 +104,34 @@ const Profile = () => {
                 <WalletConnect />
               </div>
             </Card>
+
+            {/* Stats Card */}
+            {stats && (
+              <Card className="p-6 mb-8 gradient-card border-border">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-primary mb-1">
+                      {stats.services_used || 0}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Services Used</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-accent mb-1">
+                      ${Number(stats.total_spent || 0).toFixed(2)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Total Spent</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-primary mb-1">
+                      {stats.last_payment_at 
+                        ? format(new Date(stats.last_payment_at), "MMM d")
+                        : "N/A"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Last Payment</p>
+                  </div>
+                </div>
+              </Card>
+            )}
 
             {/* Profile Tabs */}
             <Tabs defaultValue="history" className="w-full">
@@ -234,15 +281,15 @@ const Profile = () => {
 
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
-                        <Label htmlFor="dark-mode">Dark Mode</Label>
+                        <Label htmlFor="light-mode">Light Mode</Label>
                         <p className="text-sm text-muted-foreground">
-                          Toggle between light and dark theme
+                          Toggle between dark and light theme
                         </p>
                       </div>
                       <Switch
-                        id="dark-mode"
-                        checked={darkMode}
-                        onCheckedChange={setDarkMode}
+                        id="light-mode"
+                        checked={isLightMode}
+                        onCheckedChange={(checked) => setTheme(checked ? "light" : "dark")}
                       />
                     </div>
 

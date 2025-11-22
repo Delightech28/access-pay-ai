@@ -437,7 +437,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                       </div>
                     )}
 
-                    <ScrollArea className={`rounded-lg border border-border bg-background/50 p-3 ${isFullscreen ? 'flex-1' : 'h-64 w-full'}`}>
+                    <ScrollArea className={`rounded-lg border border-border bg-background/50 p-3 ${isFullscreen ? 'flex-1' : 'h-64 max-h-64 w-full'}`}>
                       {messages.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                           <div className="text-center space-y-2">

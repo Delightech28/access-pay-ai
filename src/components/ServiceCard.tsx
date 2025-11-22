@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CheckCircle2, Loader2, Zap, Send, MessageSquare, X, Clock, CheckCircle, Maximize2, Minimize2 } from "lucide-react";
+import { CheckCircle2, Loader2, Zap, Send, MessageSquare, X, Clock, CheckCircle, Maximize2, Minimize2, Paperclip, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { payForService, getAccessExpiry, checkAccess } from "@/lib/avalanche";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,12 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  image?: string;
+  file?: {
+    name: string;
+    type: string;
+    data: string;
+  };
 }
 
 const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
@@ -41,6 +47,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchAccessStatus = async () => {
@@ -174,16 +181,51 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error("File too large", {
+          description: "Maximum file size is 20MB",
+        });
+        return;
+      }
+      setSelectedFile(file);
+      toast.success("File selected", {
+        description: file.name,
+      });
+    }
+  };
+
   const handleSendMessage = async () => {
-    if (!prompt.trim() || !walletAddress) return;
+    if ((!prompt.trim() && !selectedFile) || !walletAddress) return;
+    
+    // Convert file to base64 if present
+    let fileData = null;
+    if (selectedFile) {
+      const reader = new FileReader();
+      fileData = await new Promise<string>((resolve) => {
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.readAsDataURL(selectedFile);
+      });
+    }
+
     const userMessage: ChatMessage = {
       role: "user",
-      content: prompt,
+      content: prompt || (selectedFile ? `[File: ${selectedFile.name}]` : ""),
       timestamp: new Date().toISOString(),
+      ...(fileData && {
+        file: {
+          name: selectedFile!.name,
+          type: selectedFile!.type,
+          data: fileData,
+        },
+      }),
     };
 
     setMessages((prev) => [...prev, userMessage]);
     setPrompt("");
+    setSelectedFile(null);
     setIsLoading(true);
 
     try {
@@ -192,6 +234,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
           userAddress: walletAddress,
           serviceId: service.id,
           prompt: userMessage.content,
+          file: userMessage.file,
         }
       });
 
@@ -241,6 +284,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
         role: "assistant",
         content: data.response,
         timestamp: data.timestamp,
+        ...(data.image && { image: data.image }),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -410,13 +454,26 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                               className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
                             >
                               <div
-                                className={`max-w-[85%] rounded-lg px-3 py-2 ${
+                                 className={`max-w-[85%] rounded-lg px-3 py-2 ${
                                   msg.role === "user"
                                     ? "bg-primary text-primary-foreground"
                                     : "bg-muted text-foreground border border-border"
                                 }`}
                               >
+                                {msg.file && (
+                                  <div className="mb-2 flex items-center gap-2 text-xs opacity-80">
+                                    <Paperclip className="w-3 h-3" />
+                                    <span>{msg.file.name}</span>
+                                  </div>
+                                )}
                                 <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                                {msg.image && (
+                                  <img 
+                                    src={msg.image} 
+                                    alt="AI generated" 
+                                    className="mt-2 rounded-lg max-w-full"
+                                  />
+                                )}
                               </div>
                             </div>
                           ))}
@@ -432,8 +489,35 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                     </ScrollArea>
 
                     <div className="flex gap-2">
+                      <input
+                        type="file"
+                        id="file-upload"
+                        className="hidden"
+                        onChange={handleFileSelect}
+                        accept="image/*,.pdf,.txt,.doc,.docx"
+                      />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => document.getElementById('file-upload')?.click()}
+                        disabled={isLoading}
+                        className="shrink-0"
+                        title="Attach file"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </Button>
+                      {selectedFile && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 text-xs">
+                          <Paperclip className="w-3 h-3" />
+                          <span className="truncate max-w-[100px]">{selectedFile.name}</span>
+                          <X 
+                            className="w-3 h-3 cursor-pointer hover:text-destructive" 
+                            onClick={() => setSelectedFile(null)}
+                          />
+                        </div>
+                      )}
                       <Input
-                        placeholder="Type your message..."
+                        placeholder={selectedFile ? "Add a message (optional)" : "Type your message..."}
                         value={prompt}
                         onChange={(e) => setPrompt(e.target.value)}
                         onKeyDown={(e) => {
@@ -447,7 +531,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                       />
                       <Button
                         onClick={handleSendMessage}
-                        disabled={!prompt.trim() || isLoading}
+                        disabled={(!prompt.trim() && !selectedFile) || isLoading}
                         size="icon"
                         className="shrink-0"
                       >

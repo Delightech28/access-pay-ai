@@ -68,9 +68,16 @@ serve(async (req) => {
     let response: string;
     let generatedImage: string | undefined;
 
-    // Detect if user wants an image
-    const imageKeywords = ['generate image', 'create image', 'draw', 'picture of', 'image of', 'show me'];
-    const wantsImage = imageKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
+    // Detect if user wants an image - check for generation keywords
+    const imageKeywords = ['generate', 'create', 'draw', 'make', 'design', 'picture', 'image', 'show me'];
+    const wantsImage = imageKeywords.some(keyword => {
+      const lowerPrompt = prompt.toLowerCase();
+      // Check if keyword appears at start or after common words
+      return lowerPrompt.startsWith(keyword) || 
+             lowerPrompt.includes(` ${keyword} `) ||
+             lowerPrompt.includes(`${keyword} a`) ||
+             lowerPrompt.includes(`${keyword} an`);
+    });
 
     // For Gemini service (serviceId 0)
     if (serviceId === 0) {
@@ -97,7 +104,7 @@ serve(async (req) => {
               model: 'google/gemini-2.5-flash-image-preview',
               messages: [{
                 role: 'user',
-                content: prompt.replace(/generate image|create image|draw|picture of|image of|show me/gi, '').trim()
+                content: prompt.replace(/^(generate|create|draw|make|design|picture of|image of|show me)\s*/gi, '').trim()
               }],
               modalities: ['image', 'text']
             })

@@ -19,24 +19,22 @@ const Navbar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 lg:px-8">
-        <div className="flex h-20 items-center justify-between">
+    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link to="/" className="flex items-center gap-2 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl group-hover:bg-primary/40 transition-all duration-300" />
-              <div className="relative bg-gradient-to-br from-primary to-accent p-2.5 rounded-xl group-hover:scale-110 transition-transform duration-300">
-                <Zap className="w-6 h-6 text-white" />
-              </div>
+              <Zap className="w-8 h-8 text-primary group-hover:animate-pulse transition-all" />
+              <div className="absolute inset-0 blur-lg bg-primary/20 group-hover:bg-primary/40 transition-all" />
             </div>
-            <span className="text-2xl font-bold text-gradient">
+            <span className="text-xl font-bold bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
               NeuraPay
             </span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-6">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -44,17 +42,14 @@ const Navbar = () => {
                   key={item.path}
                   to={item.path}
                   className={cn(
-                    "relative flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all duration-300",
+                    "flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200",
                     isActive(item.path)
-                      ? "text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
                 >
-                  {isActive(item.path) && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent rounded-xl glow-primary" />
-                  )}
-                  <Icon className="w-4 h-4 relative z-10" />
-                  <span className="relative z-10">{item.name}</span>
+                  <Icon className="w-4 h-4" />
+                  <span className="font-medium">{item.name}</span>
                 </Link>
               );
             })}
@@ -73,7 +68,7 @@ const Navbar = () => {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="md:hidden py-6 space-y-3 animate-in slide-in-from-top border-t border-border/50 mt-4">
+          <div className="md:hidden py-4 space-y-2 animate-in slide-in-from-top">
             {navItems.map((item) => {
               const Icon = item.icon;
               return (
@@ -82,17 +77,14 @@ const Navbar = () => {
                   to={item.path}
                   onClick={() => setIsOpen(false)}
                   className={cn(
-                    "relative flex items-center gap-3 px-5 py-3.5 rounded-xl font-medium transition-all",
+                    "flex items-center gap-3 px-4 py-3 rounded-lg transition-all",
                     isActive(item.path)
-                      ? "text-primary-foreground"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "bg-primary/10 text-primary border border-primary/20"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   )}
                 >
-                  {isActive(item.path) && (
-                    <div className="absolute inset-0 bg-gradient-to-r from-primary to-accent rounded-xl" />
-                  )}
-                  <Icon className="w-5 h-5 relative z-10" />
-                  <span className="relative z-10">{item.name}</span>
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{item.name}</span>
                 </Link>
               );
             })}

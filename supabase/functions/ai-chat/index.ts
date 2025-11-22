@@ -13,7 +13,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userAddress, serviceId, prompt } = await req.json();
+    const { userAddress, serviceId, prompt, file } = await req.json();
 
     if (!userAddress || serviceId === undefined || !prompt) {
       return new Response(
@@ -66,43 +66,89 @@ serve(async (req) => {
     
     const serviceName = serviceId === 0 ? 'Gemini' : serviceId === 1 ? 'GPT-4' : 'AI Service';
     let response: string;
+    let generatedImage: string | undefined;
 
-    // For Gemini service (serviceId 0), call real Gemini API
+    // Detect if user wants an image
+    const imageKeywords = ['generate image', 'create image', 'draw', 'picture of', 'image of', 'show me'];
+    const wantsImage = imageKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
+
+    // For Gemini service (serviceId 0)
     if (serviceId === 0) {
-      const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
-      if (!geminiApiKey) {
-        console.error('GEMINI_API_KEY not configured');
+      const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+      if (!lovableApiKey) {
+        console.error('LOVABLE_API_KEY not configured');
         return new Response(
-          JSON.stringify({ error: 'Gemini API key not configured' }),
+          JSON.stringify({ error: 'AI service not configured' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       try {
-        const geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-          {
+        // If user wants an image, use image generation model
+        if (wantsImage) {
+          console.log('Generating image with Lovable AI');
+          const imageResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
             headers: {
+              'Authorization': `Bearer ${lovableApiKey}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              contents: [{
-                parts: [{ text: prompt }]
+              model: 'google/gemini-2.5-flash-image-preview',
+              messages: [{
+                role: 'user',
+                content: prompt.replace(/generate image|create image|draw|picture of|image of|show me/gi, '').trim()
+              }],
+              modalities: ['image', 'text']
+            })
+          });
+
+          if (!imageResponse.ok) {
+            const errorData = await imageResponse.text();
+            console.error('Image generation error:', imageResponse.status, errorData);
+            throw new Error(`Image generation failed: ${imageResponse.status}`);
+          }
+
+          const imageData = await imageResponse.json();
+          generatedImage = imageData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+          response = imageData.choices?.[0]?.message?.content || 'Image generated successfully!';
+        } else {
+          // Text-based conversation with file support
+          const messageContent: any[] = [{ type: 'text', text: prompt }];
+          
+          // Add file if present
+          if (file) {
+            messageContent.push({
+              type: 'image_url',
+              image_url: { url: file.data }
+            });
+          }
+
+          const geminiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${lovableApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-2.5-flash',
+              messages: [{
+                role: 'user',
+                content: messageContent
               }]
             })
+          });
+
+          if (!geminiResponse.ok) {
+            const errorData = await geminiResponse.text();
+            console.error('Gemini API error:', geminiResponse.status, errorData);
+            throw new Error(`Gemini API returned ${geminiResponse.status}`);
           }
-        );
 
-        if (!geminiResponse.ok) {
-          const errorData = await geminiResponse.text();
-          console.error('Gemini API error:', geminiResponse.status, errorData);
-          throw new Error(`Gemini API returned ${geminiResponse.status}`);
+          const geminiData = await geminiResponse.json();
+          response = geminiData.choices?.[0]?.message?.content || 
+                     'Sorry, I could not generate a response.';
         }
-
-        const geminiData = await geminiResponse.json();
-        response = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || 
-                   'Sorry, I could not generate a response.';
 
         // Log usage for tracking/leaderboard
         console.log('Gemini API call successful for user:', userAddress);
@@ -204,7 +250,8 @@ serve(async (req) => {
       JSON.stringify({
         response,
         timestamp: new Date().toISOString(),
-        service: serviceName
+        service: serviceName,
+        ...(generatedImage && { image: generatedImage })
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

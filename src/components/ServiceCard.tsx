@@ -48,6 +48,45 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+
+  // Load chat history from database
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      if (!walletAddress) {
+        setIsLoadingHistory(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .select('*')
+          .eq('wallet_address', walletAddress)
+          .eq('service_id', service.id)
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          console.error('Error loading chat history:', error);
+          toast.error('Failed to load chat history');
+        } else if (data) {
+          setMessages(data.map(msg => ({
+            role: msg.role as 'user' | 'assistant',
+            content: msg.content,
+            timestamp: msg.created_at || new Date().toISOString(),
+            image: msg.image || undefined,
+            file: msg.file ? { name: msg.file, type: '', data: '' } : undefined,
+          })));
+        }
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    loadChatHistory();
+  }, [walletAddress, service.id]);
 
   useEffect(() => {
     const fetchAccessStatus = async () => {
@@ -228,6 +267,19 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
     setSelectedFile(null);
     setIsLoading(true);
 
+    // Save user message to database
+    try {
+      await supabase.from('chat_messages').insert({
+        wallet_address: walletAddress,
+        service_id: service.id,
+        role: 'user',
+        content: userMessage.content,
+        file: userMessage.file?.name || null
+      });
+    } catch (error) {
+      console.error('Error saving user message:', error);
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke('ai-chat', {
         body: {
@@ -288,6 +340,19 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+
+      // Save assistant message to database
+      try {
+        await supabase.from('chat_messages').insert({
+          wallet_address: walletAddress,
+          service_id: service.id,
+          role: 'assistant',
+          content: data.response,
+          image: data.image || null
+        });
+      } catch (error) {
+        console.error('Error saving assistant message:', error);
+      }
     } catch (error: any) {
       console.error("Chat error:", error);
       toast.error("Connection Error", {
@@ -438,7 +503,14 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                     )}
 
                     <ScrollArea className={`rounded-lg border border-border bg-background/50 p-3 ${isFullscreen ? 'flex-1' : 'h-64 max-h-64 w-full'}`}>
-                      {messages.length === 0 ? (
+                      {isLoadingHistory ? (
+                        <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                          <div className="text-center space-y-2">
+                            <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                            <p className="font-medium">Loading conversation...</p>
+                          </div>
+                        </div>
+                      ) : messages.length === 0 ? (
                         <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                           <div className="text-center space-y-2">
                             <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />

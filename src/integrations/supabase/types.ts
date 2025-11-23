@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          file: string | null
+          id: string
+          image: string | null
+          role: string
+          service_id: number
+          wallet_address: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          file?: string | null
+          id?: string
+          image?: string | null
+          role: string
+          service_id: number
+          wallet_address: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          file?: string | null
+          id?: string
+          image?: string | null
+          role?: string
+          service_id?: number
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       leaderboard_stats: {
         Row: {
           created_at: string | null

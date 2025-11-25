@@ -48,6 +48,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
   const [timeRemaining, setTimeRemaining] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
 
   // Load chat history from database
@@ -230,9 +231,28 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
         return;
       }
       setSelectedFile(file);
+      
+      // Create preview for images
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+      }
+      
       toast.success("File selected", {
         description: file.name,
       });
+    }
+  };
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    setImagePreview(null);
+    const fileInput = document.getElementById('file-upload') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
     }
   };
 
@@ -265,6 +285,7 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
     setMessages((prev) => [...prev, userMessage]);
     setPrompt("");
     setSelectedFile(null);
+    setImagePreview(null);
     setIsLoading(true);
 
     // Save user message to database
@@ -560,55 +581,76 @@ const ServiceCard = ({ service, walletAddress }: ServiceCardProps) => {
                       )}
                     </ScrollArea>
 
-                    <div className="flex gap-2">
-                      <input
-                        type="file"
-                        id="file-upload"
-                        className="hidden"
-                        onChange={handleFileSelect}
-                        accept="image/*,.pdf,.txt,.doc,.docx"
-                      />
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => document.getElementById('file-upload')?.click()}
-                        disabled={isLoading}
-                        className="shrink-0"
-                        title="Attach file"
-                      >
-                        <Paperclip className="w-4 h-4" />
-                      </Button>
-                      {selectedFile && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 text-xs">
-                          <Paperclip className="w-3 h-3" />
-                          <span className="truncate max-w-[100px]">{selectedFile.name}</span>
-                          <X 
-                            className="w-3 h-3 cursor-pointer hover:text-destructive" 
-                            onClick={() => setSelectedFile(null)}
+                    <div className="space-y-2">
+                      {imagePreview && (
+                        <div className="relative inline-block">
+                          <img 
+                            src={imagePreview} 
+                            alt="Preview" 
+                            className="max-h-32 rounded-lg border border-border"
                           />
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="destructive"
+                            className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                            onClick={handleRemoveFile}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
                         </div>
                       )}
-                      <Input
-                        placeholder={selectedFile ? "Add a message (optional)" : "Type your message..."}
-                        value={prompt}
-                        onChange={(e) => setPrompt(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            handleSendMessage();
-                          }
-                        }}
-                        disabled={isLoading}
-                        className="flex-1"
-                      />
-                      <Button
-                        onClick={handleSendMessage}
-                        disabled={(!prompt.trim() && !selectedFile) || isLoading}
-                        size="icon"
-                        className="shrink-0"
-                      >
-                        <Send className="w-4 h-4" />
-                      </Button>
+                      <div className="flex gap-2">
+                        <input
+                          type="file"
+                          id="file-upload"
+                          className="hidden"
+                          onChange={handleFileSelect}
+                          accept="image/*,.pdf,.txt,.doc,.docx"
+                          capture="environment"
+                        />
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => document.getElementById('file-upload')?.click()}
+                          disabled={isLoading}
+                          className="shrink-0"
+                          title="Attach file"
+                        >
+                          <Paperclip className="w-4 h-4" />
+                        </Button>
+                        {selectedFile && !imagePreview && (
+                          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary/50 text-xs">
+                            <Paperclip className="w-3 h-3" />
+                            <span className="truncate max-w-[100px]">{selectedFile.name}</span>
+                            <X 
+                              className="w-3 h-3 cursor-pointer hover:text-destructive" 
+                              onClick={handleRemoveFile}
+                            />
+                          </div>
+                        )}
+                        <Input
+                          placeholder={selectedFile ? "Add a message (optional)" : "Type your message..."}
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendMessage();
+                            }
+                          }}
+                          disabled={isLoading}
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={handleSendMessage}
+                          disabled={(!prompt.trim() && !selectedFile) || isLoading}
+                          size="icon"
+                          className="shrink-0"
+                        >
+                          <Send className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
